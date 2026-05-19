@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LearningGoalType {
+  EXAM
+  WORK_COMMUNICATION
+  FOUNDATION
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum QuestionStatus {
+  DRAFT
+  REVIEWED
+  ARCHIVED
+}
+
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  name           String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  profile        Profile?
+  learningPaths  LearningPath[]
+  studySchedules StudySchedule[]
+  studySessions  StudySession[]
+  lessonAttempts LessonAttempt[]
+  aiConversations AiConversation[]
+  usageLedger    UsageLedger[]
+  creditLedger   CreditLedger[]
+  subscriptions  Subscription[]
+}
+
+model Language {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  nativeName String
+  createdAt DateTime @default(now())
+}
+
+model Profile {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  nativeLanguage   String
+  targetLanguage   String
+  level            String
+  goal             LearningGoalType
+  dailyMinutes     Int              @default(10)
+  user             User             @relation(fields: [userId], references: [id])
+}
+
+model LearningPath {
+  id        String             @id @default(cuid())
+  userId    String
+  goal      LearningGoalType
+  title     String
+  level     String
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime           @default(now())
+  user      User               @relation(fields: [userId], references: [id])
+  steps     LearningPathStep[]
+}
+
+model LearningPathStep {
+  id             String       @id @default(cuid())
+  learningPathId String
+  order          Int
+  title          String
+  kind           String
+  status         String       @default("pending")
+  lessonId       String?
+  learningPath   LearningPath @relation(fields: [learningPathId], references: [id])
+  lesson         Lesson?      @relation(fields: [lessonId], references: [id])
+}
+
+model StudySchedule {
+  id        String   @id @default(cuid())
+  userId    String
+  dayOfWeek Int
+  startTime String
+  minutes   Int
+  enabled   Boolean  @default(true)
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  userId    String
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  source    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Course {
+  id       String   @id @default(cuid())
+  title    String
+  language String
+  goal     LearningGoalType
+  units    Unit[]
+}
+
+model Unit {
+  id       String   @id @default(cuid())
+  courseId String
+  order    Int
+  title    String
+  course   Course   @relation(fields: [courseId], references: [id])
+  lessons  Lesson[]
+}
+
+model Lesson {
+  id        String             @id @default(cuid())
+  unitId    String?
+  title     String
+  level     String
+  skill     String
+  duration  Int
+  unit      Unit?              @relation(fields: [unitId], references: [id])
+  activities Activity[]
+  attempts  LessonAttempt[]
+  pathSteps LearningPathStep[]
+}
+
+model Activity {
+  id       String   @id @default(cuid())
+  lessonId String
+  order    Int
+  kind     String
+  prompt   Json
+  answer   Json?
+  lesson   Lesson   @relation(fields: [lessonId], references: [id])
+}
+
+model LessonAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  score     Float?
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  user      User     @relation(fields: [userId], references: [id])
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  title     String
+  sourceUrl String?
+  language  String
+  level     String
+  rights    String
+  createdAt DateTime @default(now())
+  captions  MediaCaption[]
+}
+
+model MediaCaption {
+  id          String     @id @default(cuid())
+  mediaAssetId String
+  startMs     Int
+  endMs       Int
+  text        String
+  translation String?
+  mediaAsset  MediaAsset @relation(fields: [mediaAssetId], references: [id])
+}
+
+model QuestionBankItem {
+  id          String         @id @default(cuid())
+  goal        LearningGoalType
+  language    String
+  level       String
+  skill       String
+  topic       String
+  difficulty  Int
+  prompt      Json
+  answer      Json
+  explanation String?
+  status      QuestionStatus @default(DRAFT)
+  createdAt   DateTime       @default(now())
+}
+
+model QuestionBlueprint {
+  id       String           @id @default(cuid())
+  name     String
+  goal     LearningGoalType
+  language String
+  level    String
+  rules    Json
+}
+
+model AiConversation {
+  id        String      @id @default(cuid())
+  userId    String
+  scenario  String
+  summary   String?
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+  messages  AiMessage[]
+}
+
+model AiMessage {
+  id               String         @id @default(cuid())
+  aiConversationId String
+  role             String
+  content          String
+  tokenEstimate    Int            @default(0)
+  createdAt        DateTime       @default(now())
+  conversation     AiConversation @relation(fields: [aiConversationId], references: [id])
+}
+
+model UsageLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  provider  String?
+  model     String?
+  quantity  Int
+  unit      String
+  costCents Int      @default(0)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Plan {
+  id            String         @id @default(cuid())
+  name          String
+  monthlyCents  Int
+  aiTurnLimit   Int
+  audioSeconds  Int
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  planId    String
+  status    SubscriptionStatus
+  startedAt DateTime           @default(now())
+  endsAt    DateTime?
+  user      User               @relation(fields: [userId], references: [id])
+  plan      Plan               @relation(fields: [planId], references: [id])
+}
+
+model CreditLedger {
+  id          String          @id @default(cuid())
+  userId      String
+  direction   LedgerDirection
+  amount      Int
+  reason      String
+  referenceId String?
+  createdAt   DateTime        @default(now())
+  user        User            @relation(fields: [userId], references: [id])
+}
