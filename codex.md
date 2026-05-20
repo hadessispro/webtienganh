@@ -1,7 +1,7 @@
 # Notes for Codex
 
-> Last update: 2026-05-20, after merging `feat/courses-learning-path` to `main`.
-> Sequence on `main` for this iteration: PR1 (placement) → restore dashboard entry → **PR (courses learning path)** ← just landed at `3cabc83`.
+> Last update: 2026-05-20, after merging both `feat/courses-learning-path` and `fix/typography-inter-unified` to `main`.
+> Sequence on `main` for this iteration: PR1 (placement) → restore dashboard entry → courses learning path (`3cabc83`) → **typography unified (`048edf9`)** ← latest.
 
 ---
 
@@ -95,11 +95,13 @@ Please run through these and fix anything that fails. Do not touch items already
 
 | Branch | Status | Notes |
 |---|---|---|
-| `main` | `3cabc83` | this PR landed |
-| `feat/placement-screen` | merged earlier | placement flow at `/placement` |
-| `fix/typography-inter-unified` | **pushed, NOT merged** | unifies Inter font site-wide, removes Fraunces/Manrope/italics. Safe to merge — review checklist in commit `f9ef552`. Conflict-free with this PR. |
-| `feat/course-cards-tilt-spotlight` | **pushed, NOT merged** (rejected by user) | 3D tilt + spotlight card. User opted for the path layout instead. **Recommend: close without merging and delete the branch.** Keep the work in git history just in case. |
-| `feat/courses-learning-path` | merged to main as `3cabc83` | safe to delete the branch |
+| `main` | `048edf9` | typography unified, courses learning-path landed |
+| `feat/placement-screen` | merged earlier | placement flow at `/placement` — feature branch still exists on remote, can be deleted any time |
+
+All other recent branches have been cleaned up:
+- `feat/courses-learning-path` → squashed into `3cabc83`, branch deleted
+- `fix/typography-inter-unified` → squashed into `048edf9`, branch deleted
+- `feat/course-cards-tilt-spotlight` → rejected by user (path layout preferred), branch deleted without merging (work preserved in git reflog if needed)
 
 ---
 
