@@ -425,7 +425,7 @@ export default function Home() {
             <span className={themeMode === "light" ? "active" : ""}>☀</span>
             <span className={themeMode === "dark" ? "active" : ""}>☾</span>
           </button>
-          <a className="ghost-button journey-button" href="/learn">Vào học</a>
+          <a className="ghost-button journey-button" href="/placement">Đánh giá đầu vào</a>
         </div>
         <nav className={`mobile-nav ${mobileMenuOpen ? "open" : ""}`} aria-label="Điều hướng mobile">
           <a href="#home" onClick={() => setMobileMenuOpen(false)}>Trang chủ</a>

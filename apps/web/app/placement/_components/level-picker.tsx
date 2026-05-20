@@ -226,16 +226,20 @@ export default function LevelPicker({ onPickLevel, onStartTest }: Props) {
         </button>
       </motion.div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .picker-wrap {
           position: absolute;
           inset: 0;
+          width: 100%;
+          min-height: 100%;
+          box-sizing: border-box;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           padding: 40px 24px;
           gap: 38px;
+          text-align: center;
         }
 
         .picker-header {
@@ -274,16 +278,8 @@ export default function LevelPicker({ onPickLevel, onStartTest }: Props) {
           gap: 18px;
           max-width: 760px;
           width: 100%;
-        }
-
-        @media (max-width: 720px) {
-          .drops-grid {
-            grid-template-columns: repeat(3, 1fr);
-            max-width: 380px;
-          }
-          .picker-title {
-            font-size: 26px;
-          }
+          margin: 0 auto;
+          justify-items: center;
         }
 
         .drop {
@@ -295,6 +291,7 @@ export default function LevelPicker({ onPickLevel, onStartTest }: Props) {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-self: center;
           gap: 8px;
           transition: filter 200ms ease;
           will-change: transform;
@@ -323,6 +320,8 @@ export default function LevelPicker({ onPickLevel, onStartTest }: Props) {
           flex-direction: column;
           align-items: center;
           gap: 2px;
+          width: 100%;
+          text-align: center;
         }
 
         .drop-level {
@@ -386,6 +385,93 @@ export default function LevelPicker({ onPickLevel, onStartTest }: Props) {
         .picker-cta:disabled {
           opacity: 0.4;
           cursor: default;
+        }
+
+        @media (max-width: 720px), (max-height: 640px) {
+          .picker-wrap {
+            padding: 24px 18px;
+            gap: 22px;
+          }
+
+          .picker-header {
+            max-width: 520px;
+          }
+
+          .picker-eyebrow {
+            font-size: 10px;
+            margin-bottom: 10px;
+          }
+
+          .picker-title {
+            font-size: 28px;
+            margin-bottom: 8px;
+          }
+
+          .picker-sub {
+            font-size: 13px;
+          }
+
+          .drops-grid {
+            grid-template-columns: repeat(3, minmax(76px, 1fr));
+            max-width: 330px;
+            gap: 12px 16px;
+          }
+
+          .drop {
+            gap: 6px;
+          }
+
+          .drop-svg {
+            width: 72px;
+            height: 84px;
+          }
+
+          .drop-level {
+            font-size: 15px;
+          }
+
+          .drop-desc {
+            font-size: 10px;
+          }
+
+          .picker-cta-wrap {
+            gap: 8px;
+          }
+
+          .picker-cta-hint {
+            font-size: 10px;
+          }
+
+          .picker-cta {
+            padding: 12px 22px;
+            font-size: 14px;
+          }
+        }
+
+        @media (max-height: 560px) {
+          .picker-wrap {
+            padding: 18px 16px;
+            gap: 16px;
+          }
+
+          .picker-title {
+            font-size: 24px;
+          }
+
+          .picker-sub,
+          .picker-cta-hint {
+            display: none;
+          }
+
+          .drop-svg {
+            width: 64px;
+            height: 74px;
+          }
+
+          .drops-grid {
+            max-width: 310px;
+            gap: 10px 14px;
+          }
         }
       `}</style>
     </motion.div>

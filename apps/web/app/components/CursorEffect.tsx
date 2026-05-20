@@ -7,7 +7,7 @@ export function CursorEffect() {
   const dotRef = useRef<HTMLDivElement | null>(null);
   const ringRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
-  const disabled = pathname === "/learn" || pathname === "/admin";
+  const disabled = pathname === "/placement" || pathname === "/learn" || pathname === "/admin";
 
   useEffect(() => {
     if (disabled) {

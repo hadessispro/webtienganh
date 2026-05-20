@@ -56,43 +56,7 @@ export default function SplashScreen({ onDone }: Props) {
         animate={{ y: 0, opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
       >
-        <svg width="68" height="68" viewBox="0 0 68 68" fill="none">
-          <defs>
-            <linearGradient id="leafGrad" x1="0" y1="0" x2="68" y2="68">
-              <stop offset="0%" stopColor="#5cffa3" />
-              <stop offset="100%" stopColor="#8bff9e" />
-            </linearGradient>
-          </defs>
-          {/* Stylized leaf/sprout */}
-          <path
-            d="M34 8 C 18 12, 10 28, 14 44 C 18 56, 30 60, 34 60 C 38 60, 50 56, 54 44 C 58 28, 50 12, 34 8 Z"
-            fill="url(#leafGrad)"
-            opacity="0.95"
-          />
-          <path
-            d="M34 16 C 34 30, 34 46, 34 58"
-            stroke="#0a1f14"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            opacity="0.6"
-          />
-          <path
-            d="M34 30 C 28 26, 24 28, 22 32"
-            stroke="#0a1f14"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.4"
-            fill="none"
-          />
-          <path
-            d="M34 38 C 40 34, 44 36, 46 40"
-            stroke="#0a1f14"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.4"
-            fill="none"
-          />
-        </svg>
+        <img alt="LumaLang" src="/images/lumalang-logo.png" />
         <h1 className="splash-name">LumaLang</h1>
       </motion.div>
 
@@ -114,7 +78,7 @@ export default function SplashScreen({ onDone }: Props) {
         chạm để tiếp tục
       </motion.div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .splash-wrap {
           position: absolute;
           inset: 0;
@@ -148,6 +112,13 @@ export default function SplashScreen({ onDone }: Props) {
           gap: 16px;
           z-index: 2;
           filter: drop-shadow(0 0 30px rgba(92, 255, 163, 0.4));
+        }
+
+        .splash-logo img {
+          width: 82px;
+          height: 82px;
+          border-radius: 24px;
+          object-fit: contain;
         }
 
         .splash-name {

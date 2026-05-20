@@ -288,7 +288,7 @@ export default function QuizSlider({ onDone }: Props) {
         </AnimatePresence>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .quiz-wrap {
           position: absolute;
           inset: 0;

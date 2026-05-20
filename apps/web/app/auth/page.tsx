@@ -4,7 +4,7 @@ import { AuthStudio } from "../components/AuthStudio";
 export default function AuthPage() {
   return (
     <main className="page-shell theme-light app-page">
-      <AppHeader active="auth" actionHref="/learn" actionLabel="Phòng học" />
+      <AppHeader active="auth" actionHref="/placement" actionLabel="Đánh giá đầu vào" />
       <AuthStudio />
     </main>
   );

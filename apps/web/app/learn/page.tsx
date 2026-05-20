@@ -1,9 +1,5 @@
-import { LumaUserDashboard } from "../components/LumaUserDashboard";
+import { redirect } from "next/navigation";
 
 export default function LearnPage() {
-  return (
-    <main className="page-shell theme-light workspace-page">
-      <LumaUserDashboard />
-    </main>
-  );
+  redirect("/placement");
 }
