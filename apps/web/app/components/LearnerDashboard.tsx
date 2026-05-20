@@ -305,7 +305,7 @@ function MochiGardenScene() {
       </g>
       <g opacity="0.95" transform="translate(310, 180)">
         <path d="M0 20Q0 0 25 0L70 0Q90 0 90 20L90 30Q90 45 75 45L35 45L20 55L25 45Q0 45 0 30Z" fill="white" stroke="rgba(91,174,111,0.3)" strokeWidth="1" />
-        <text x="45" y="28" textAnchor="middle" fontFamily="Manrope, sans-serif" fontSize="11" fontWeight="500" fill="#1f3a2c">
+        <text x="45" y="28" textAnchor="middle" fontFamily="Inter, ui-sans-serif, system-ui, sans-serif" fontSize="11" fontWeight="500" fill="#1f3a2c">
           Học cùng tớ?
         </text>
       </g>

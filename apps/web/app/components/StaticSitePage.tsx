@@ -18,7 +18,7 @@ export function StaticSitePage({ content }: StaticSitePageProps) {
           <span className="brand-logo-frame">
             <img alt="" src="/images/lumalang-logo.png" />
           </span>
-          <span>Luma<em>Lang</em><sup>*</sup></span>
+          <span>Luma<span className="ll-accent">Lang</span><sup>*</sup></span>
         </Link>
         <nav className="nav-pills" aria-label="Điều hướng chính">
           <Link href="/">Trang chủ</Link>

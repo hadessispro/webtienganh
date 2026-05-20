@@ -33,7 +33,7 @@ export function AppHeader({
           <img alt="" src="/images/lumalang-logo.png" />
         </span>
         <span>
-          Luma<em>Lang</em><sup>*</sup>
+          Luma<span className="ll-accent">Lang</span><sup>*</sup>
         </span>
       </Link>
       <nav className="nav-pills" aria-label="Điều hướng chính">

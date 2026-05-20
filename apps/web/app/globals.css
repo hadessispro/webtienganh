@@ -30,6 +30,23 @@ body {
   background: #f7faf7;
   color: var(--ink);
   font-family: var(--font-ui);
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Unified typography: remove italic styling site-wide so accent <em> tags
+   render as upright Inter with mint color + weight emphasis. */
+em {
+  font-style: normal;
+}
+
+/* Inline accent for emphasis in headings and meta. Upright Inter with mint
+   color + medium weight — replaces the legacy italic <em> pattern. */
+.ll-accent {
+  color: var(--green, #0f9d58);
+  font-style: normal;
+  font-weight: 600;
 }
 
 .cursor-dot,
@@ -630,7 +647,7 @@ button {
 .panel-head h2,
 .section-title h2 {
   margin: 0;
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-weight: 700;
   font-size: 30px;
   line-height: 1.14;
@@ -643,7 +660,7 @@ button {
 
 .feature-grid .section-title h2 {
   max-width: 520px;
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 28px;
   line-height: 1.18;
 }
@@ -1829,7 +1846,7 @@ button {
   max-width: 650px;
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-weight: 700;
   font-size: clamp(38px, 5vw, 74px);
   line-height: 1.04;
@@ -1857,7 +1874,7 @@ button {
   max-width: 620px;
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-weight: 700;
   font-size: clamp(34px, 4.8vw, 64px);
   line-height: 1.04;
@@ -2001,7 +2018,7 @@ button {
   max-width: 840px;
   margin: 0;
   color: #051f20;
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-weight: 700;
   font-size: clamp(48px, 7vw, 96px);
   line-height: 1.02;
@@ -2071,7 +2088,7 @@ button {
 .route-card h2 {
   margin: 22px 0 12px;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-weight: 700;
   font-size: 30px;
   line-height: 1.1;
@@ -2601,7 +2618,7 @@ button {
   max-width: 720px;
   margin: 14px 0 18px;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: clamp(46px, 7vw, 92px);
   line-height: 0.96;
   letter-spacing: -0.04em;
@@ -2881,7 +2898,7 @@ button {
   max-width: 720px;
   margin: 12px 0 14px;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: clamp(42px, 7vw, 78px);
   line-height: 0.96;
   letter-spacing: -0.04em;
@@ -2995,7 +3012,7 @@ button {
 .section-heading h2 {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: clamp(28px, 3vw, 42px);
   line-height: 0.98;
   letter-spacing: -0.04em;
@@ -3383,7 +3400,7 @@ button {
 .learning-user-line h1 {
   margin: 5px 0 4px;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: clamp(24px, 3vw, 38px);
   line-height: 1.02;
   letter-spacing: -0.035em;
@@ -6552,7 +6569,7 @@ button {
   gap: 12px;
   padding: 12px;
   color: var(--ll-ink-900);
-  font-family: "Manrope", Inter, system-ui, sans-serif;
+  font-family: var(--font-ui);
 }
 
 .ll-dashboard *,
@@ -6620,7 +6637,7 @@ button {
   gap: 14px;
   padding: 16px;
   color: var(--ll-ink-900);
-  font-family: "Manrope", Inter, system-ui, sans-serif;
+  font-family: var(--font-ui);
 }
 
 .ll-placement-page *,
@@ -6656,7 +6673,7 @@ button {
 .ll-placement-result-card strong {
   margin: 0;
   color: var(--ll-ink-900);
-  font-family: var(--ll-font-display, "Times New Roman", Georgia, serif);
+  font-family: var(--ll-font-display);
   font-weight: 400;
   letter-spacing: -0.02em;
 }
@@ -6667,10 +6684,11 @@ button {
   line-height: 0.96;
 }
 
-.ll-placement-hero em {
+.ll-placement-hero em,
+.ll-placement-hero .ll-accent {
   color: var(--ll-mint-600);
-  font-style: italic;
-  font-weight: 300;
+  font-style: normal;
+  font-weight: 600;
 }
 
 .ll-placement-hero p,
@@ -6880,7 +6898,7 @@ button {
 
 .ll-skill-map strong {
   color: var(--ll-ink-900);
-  font-family: var(--ll-font-display, "Times New Roman", Georgia, serif);
+  font-family: var(--ll-font-display);
   font-size: 24px;
   font-weight: 400;
 }
@@ -6912,7 +6930,7 @@ button {
   place-items: center;
   border: 0;
   color: white;
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
 }
 
 .ll-logo {
@@ -7025,7 +7043,7 @@ button {
   border-radius: 999px;
   background: radial-gradient(circle at 30% 30%, #b8dcc1, #5bae6f);
   color: white;
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(91, 174, 111, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
@@ -7150,7 +7168,7 @@ button {
 .ll-group-card h2,
 .ll-quiz-row h3 {
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   letter-spacing: -0.01em;
 }
 
@@ -7247,7 +7265,7 @@ button {
 .ll-scene-header h2 {
   margin: 2px 0 0;
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-weight: 400;
   letter-spacing: -0.02em;
 }
@@ -7258,10 +7276,12 @@ button {
 }
 
 .ll-topbar em,
-.ll-scene-header em {
+.ll-topbar .ll-accent,
+.ll-scene-header em,
+.ll-scene-header .ll-accent {
   color: var(--ll-mint-600);
-  font-style: italic;
-  font-weight: 300;
+  font-style: normal;
+  font-weight: 600;
 }
 
 .ll-topbar-actions,
@@ -7362,7 +7382,7 @@ button {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: clamp(64px, 6vw, 84px);
   font-weight: 300;
   letter-spacing: -0.04em;
@@ -7684,7 +7704,7 @@ button {
 
 .ll-metric-row strong {
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: clamp(34px, 3.4vw, 48px);
   font-weight: 400;
   letter-spacing: -0.02em;
@@ -7701,7 +7721,7 @@ button {
 .ll-promises-title {
   margin-bottom: 10px;
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   font-weight: 500;
 }
@@ -8217,7 +8237,7 @@ button {
 .ll-shadowing-hero h2 {
   margin: 6px 0 4px;
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: clamp(28px, 3vw, 42px);
   font-weight: 500;
 }
@@ -8281,7 +8301,7 @@ button {
 .ll-calendar-header h2 {
   margin: 0;
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   font-weight: 500;
 }
@@ -8405,7 +8425,7 @@ button {
   border-radius: 999px;
   background: rgba(31, 58, 44, 0.08);
   color: var(--ll-ink-700);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
 }
 
 .ll-profile-workbench {
@@ -8446,7 +8466,7 @@ button {
 .ll-gif-picker-head h2 {
   margin: 2px 0 0;
   color: var(--ll-ink-900);
-  font-family: var(--ll-font-display, "Times New Roman", Georgia, serif);
+  font-family: var(--ll-font-display);
   font-size: 17px;
   font-weight: 400;
   letter-spacing: -0.01em;
@@ -8758,7 +8778,7 @@ button {
   margin: 0;
   padding: 12px;
   color: var(--admin-ink-900);
-  font-family: "Manrope", Inter, system-ui, sans-serif;
+  font-family: var(--font-ui);
   letter-spacing: 0;
 }
 
@@ -8866,7 +8886,7 @@ button {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.54);
   color: white;
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 22px;
   font-weight: 600;
   overflow: hidden;
@@ -8979,7 +8999,7 @@ button {
   border-radius: 999px;
   background: radial-gradient(circle at 30% 30%, #b8dcc1, #5bae6f);
   color: white;
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(91, 174, 111, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -8991,7 +9011,7 @@ button {
 .workspace-page .admin-status-line strong,
 .workspace-page .user-inspector strong {
   color: var(--admin-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-weight: 500;
 }
 
@@ -9109,7 +9129,7 @@ button {
 .workspace-page .admin-toolbar h1 {
   margin: 0;
   color: var(--admin-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 34px;
   font-weight: 400;
   line-height: 1;
@@ -9759,7 +9779,7 @@ button {
 
 .ll-shadowing-time strong {
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 22px;
   font-weight: 500;
 }
@@ -9825,7 +9845,7 @@ button {
 .ll-quiz-history-head h2 {
   margin: 0;
   color: var(--ll-ink-900);
-  font-family: "Manrope", Inter, system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 17px;
   font-weight: 500;
   letter-spacing: 0;
@@ -9857,7 +9877,7 @@ button {
 .ll-quiz-history-row h3 {
   margin: 0;
   color: var(--ll-ink-900);
-  font-family: "Manrope", Inter, system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0;
@@ -9871,7 +9891,7 @@ button {
 
 .ll-quiz-history-row strong {
   color: var(--ll-mint-600);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   font-weight: 500;
 }
@@ -9902,7 +9922,7 @@ button {
 .ll-timeline-panel h2 {
   margin: 0;
   color: var(--ll-ink-900);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   font-weight: 500;
 }
@@ -9925,7 +9945,7 @@ button {
 .ll-timeline-time {
   min-width: 60px;
   color: var(--ll-mint-600);
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   font-weight: 500;
 }
@@ -9990,8 +10010,8 @@ button {
 
 /* /learn: scoped template parity fixes from lumalang-full-dashboard (2).html. */
 .ll-dashboard {
-  --ll-font-body: "Manrope", Inter, system-ui, sans-serif;
-  --ll-font-display: "Times New Roman", Georgia, serif;
+  --ll-font-body: var(--font-ui);
+  --ll-font-display: var(--font-ui);
   font-family: var(--ll-font-body);
 }
 

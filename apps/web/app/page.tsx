@@ -402,7 +402,7 @@ export default function Home() {
           <span className="brand-logo-frame">
             <img alt="" src="/images/lumalang-logo.png" />
           </span>
-          <span>Luma<em>Lang</em><sup>*</sup></span>
+          <span>Luma<span className="ll-accent">Lang</span><sup>*</sup></span>
         </a>
         <nav className="nav-pills" aria-label="Điều hướng chính">
           <a href="#home">Trang chủ</a>
@@ -717,7 +717,7 @@ export default function Home() {
                 </button>
                 <div>
                   <strong>{task.title}</strong>
-                  <em>{task.detail} · {task.minutes} phút</em>
+                  <span className="ll-accent">{task.detail} · {task.minutes} phút</span>
                 </div>
               </li>
             ))}
@@ -804,7 +804,7 @@ export default function Home() {
             <div className="rank-row" key={name}>
               <span>{index + 1}</span>
               <strong>{name}</strong>
-              <em>{1240 - index * 95} điểm đều đặn</em>
+              <span className="ll-accent">{1240 - index * 95} điểm đều đặn</span>
             </div>
           ))}
         </article>
@@ -851,7 +851,7 @@ export default function Home() {
               >
                 <span>{clip.level}</span>
                 <strong>{clip.title}</strong>
-                <em>{clip.source} · {clip.focus}</em>
+                <span className="ll-accent">{clip.source} · {clip.focus}</span>
               </button>
             ))}
           </div>

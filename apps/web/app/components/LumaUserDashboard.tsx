@@ -1168,7 +1168,7 @@ function MochiGardenScene() {
       </g>
       <g opacity="0.95" transform="translate(310, 180)">
         <path d="M0 20Q0 0 25 0L70 0Q90 0 90 20L90 30Q90 45 75 45L35 45L20 55L25 45Q0 45 0 30Z" fill="white" stroke="rgba(91,174,111,0.3)" strokeWidth="1" />
-        <text x="45" y="28" textAnchor="middle" fontFamily="Manrope, sans-serif" fontSize="11" fontWeight="500" fill="#1f3a2c">
+        <text x="45" y="28" textAnchor="middle" fontFamily="Inter, ui-sans-serif, system-ui, sans-serif" fontSize="11" fontWeight="500" fill="#1f3a2c">
           Học cùng tớ?
         </text>
       </g>
@@ -1982,7 +1982,7 @@ export function LumaUserDashboard() {
           </div>
           <div>
             <div className="ll-label">New learner · Placement</div>
-            <h1>Bắt đầu đúng <em>trình độ</em></h1>
+            <h1>Bắt đầu đúng <span className="ll-accent">trình độ</span></h1>
             <p>Trả lời nhanh vài câu để LumaLang mở đúng bài đầu tiên, thay vì bắt bạn mò giữa cả dashboard.</p>
           </div>
           <div className="ll-placement-result-card">
@@ -2203,7 +2203,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">User · 12/05/2026</div>
-                <h1>Hôm nay, <em>nhẹ nhàng</em> thôi</h1>
+                <h1>Hôm nay, <span className="ll-accent">nhẹ nhàng</span> thôi</h1>
               </div>
               <div className="ll-topbar-actions">
                 <button className="ll-btn ghost" onClick={() => setActiveView("shadowing")} type="button">Shadowing</button>
@@ -2239,7 +2239,7 @@ export function LumaUserDashboard() {
                 <div className="ll-scene-header">
                   <div>
                     <div className="ll-metric-label">Cây tri thức · Khu vườn</div>
-                    <h2>Hôm nay <em>Mochi</em> đang chờ</h2>
+                    <h2>Hôm nay <span className="ll-accent">Mochi</span> đang chờ</h2>
                   </div>
                   <div className="ll-scene-pill"><strong>{completedToday}/{todayTasks.length}</strong> nhiệm vụ</div>
                 </div>
@@ -2305,7 +2305,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Học tập · {selectedCourse?.lessons ?? 28} bài</div>
-                <h1>Bài học của <em>bạn</em></h1>
+                <h1>Bài học của <span className="ll-accent">bạn</span></h1>
               </div>
               <button className="ll-btn primary" onClick={() => todayTasks.forEach((task) => toggleTask(task.id))} type="button">Đánh dấu xong</button>
             </header>
@@ -2342,7 +2342,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Khóa học · {enrolledCourses.length} đang học</div>
-                <h1>Hành trình của <em>bạn</em></h1>
+                <h1>Hành trình của <span className="ll-accent">bạn</span></h1>
               </div>
               <button className="ll-btn primary" type="button">Đăng ký mới</button>
             </header>
@@ -2360,7 +2360,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Đề luyện · 8 đề tuần này</div>
-                <h1>Luyện <em>phản xạ</em></h1>
+                <h1>Luyện <span className="ll-accent">phản xạ</span></h1>
               </div>
               <div className="ll-topbar-actions">
                 <button className="ll-btn ghost" type="button">Lịch sử</button>
@@ -2409,7 +2409,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Flashcard riêng tư · FSRS-lite · {flashcardStats.due} thẻ đến hạn</div>
-                <h1>Học <em>ghi nhớ</em></h1>
+                <h1>Học <span className="ll-accent">ghi nhớ</span></h1>
               </div>
               <div className="ll-topbar-actions">
                 {flashcardSession && !flashcardSession.completed ? (
@@ -2528,7 +2528,7 @@ export function LumaUserDashboard() {
                         >
                           <strong>{deck.label}</strong>
                           <span>{deck.detail}</span>
-                          <em>{flashcardDeckCounts[deck.id]} thẻ</em>
+                          <span className="ll-accent">{flashcardDeckCounts[deck.id]} thẻ</span>
                         </button>
                       ))}
                     </div>
@@ -2680,7 +2680,7 @@ export function LumaUserDashboard() {
                             <strong>{card.front}</strong>
                             <small>{card.source === "personal" ? "Tủ riêng" : card.tag}</small>
                           </span>
-                          <em>{getFlashcardDueLabel(card)}</em>
+                          <span className="ll-accent">{getFlashcardDueLabel(card)}</span>
                         </button>
                       ))}
                       {!deckFlashcards.length ? (
@@ -2702,7 +2702,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Shadowing · Luyện phát âm</div>
-                <h1>Nghe và <em>lặp lại</em></h1>
+                <h1>Nghe và <span className="ll-accent">lặp lại</span></h1>
               </div>
               <div className="ll-topbar-actions">
                 <button className="ll-btn ghost" type="button">Lịch sử</button>
@@ -2765,7 +2765,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Lịch học · {formatMonthLabel(visibleScheduleMonth)}</div>
-                <h1>Nhịp học của <em>bạn</em></h1>
+                <h1>Nhịp học của <span className="ll-accent">bạn</span></h1>
               </div>
               <div className="ll-topbar-actions">
                 <div className="ll-realtime-pill">
@@ -2959,7 +2959,7 @@ export function LumaUserDashboard() {
                     <button key={event.id} onClick={() => selectScheduleDate(event.date)} type="button">
                       <span>{event.sticker}</span>
                       <strong>{event.title}</strong>
-                      <em>{formatShortDate(event.date)} · {event.time}</em>
+                      <span className="ll-accent">{formatShortDate(event.date)} · {event.time}</span>
                     </button>
                   ))}
                 </div>
@@ -2973,7 +2973,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Nhóm học · {studyGroups.length} nhóm</div>
-                <h1>Cùng <em>tiến bộ</em></h1>
+                <h1>Cùng <span className="ll-accent">tiến bộ</span></h1>
               </div>
               <div className="ll-topbar-actions">
                 <button className="ll-btn ghost" type="button">Tìm nhóm</button>
@@ -3031,7 +3031,7 @@ export function LumaUserDashboard() {
             <header className="ll-topbar ll-glass">
               <div>
                 <div className="ll-label">Hồ sơ học tập</div>
-                <h1>Tài khoản và <em>avatar</em></h1>
+                <h1>Tài khoản và <span className="ll-accent">avatar</span></h1>
               </div>
             </header>
             <section className="ll-profile-workbench ll-glass">
