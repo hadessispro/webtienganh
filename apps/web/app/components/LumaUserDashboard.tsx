@@ -23,6 +23,7 @@ import {
   goalLabels,
   providerLabels
 } from "../lib/product-data";
+import { CoursePathGrid } from "./CoursePathGrid";
 
 gsap.registerPlugin(useGSAP);
 
@@ -2345,26 +2346,12 @@ export function LumaUserDashboard() {
               </div>
               <button className="ll-btn primary" type="button">Đăng ký mới</button>
             </header>
-            <div className="ll-card-grid ll-grid-2">
-              {courses.map((course, index) => (
-                <article className="ll-course-tile ll-glass" key={course.id}>
-                  <button className={`ll-course-tile-banner tile-${(index % 4) + 1}`} onClick={() => setSelectedCourseId(course.id)} type="button">
-                    <LineIcon name="courses" />
-                  </button>
-                  <div className="ll-course-tile-body">
-                    <h2>{course.title}</h2>
-                    <p>{course.language} · {course.lessons} bài · {course.students} học viên</p>
-                    <ProgressBar value={profile.enrolledCourseIds.includes(course.id) ? 68 : 0} />
-                    <div className="ll-course-tile-footer">
-                      <span>{course.level} · {goalLabels[course.goal]}</span>
-                      <button className="ll-btn mint" onClick={() => enrollCourse(course.id)} type="button">
-                        {profile.enrolledCourseIds.includes(course.id) ? "Tiếp tục" : "Bắt đầu"}
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <CoursePathGrid
+              courses={courses}
+              profile={profile}
+              onCourseOpen={(courseId) => setSelectedCourseId(courseId)}
+              onCourseEnroll={(courseId) => enrollCourse(courseId)}
+            />
           </div>
         ) : null}
 

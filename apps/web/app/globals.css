@@ -7871,6 +7871,310 @@ button {
   font-size: 12px;
 }
 
+/* ============================================================================
+   CoursePathGrid + CoursePathCard
+   Compact learning-path layout for /learn → "Khóa học" tab.
+   Tracks (rows) grouped by goal; cards inside each track sorted by CEFR.
+   ============================================================================ */
+
+.ll-course-path-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.ll-course-path-track {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ll-course-path-track-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 4px 0;
+}
+
+.ll-course-path-track-icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 30% 30%,
+      color-mix(in srgb, var(--track-accent, #5bae6f) 18%, white) 0%,
+      color-mix(in srgb, var(--track-accent, #5bae6f) 8%, white) 70%);
+  box-shadow:
+    0 6px 16px color-mix(in srgb, var(--track-accent, #5bae6f) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.ll-course-path-track-icon img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+}
+
+.ll-course-path-track-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ll-course-path-track-info h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ll-ink-900, #1f3a2c);
+}
+
+.ll-course-path-track-info p {
+  margin: 2px 0 0;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ll-ink-500, #647084);
+  line-height: 1.4;
+}
+
+.ll-course-path-track-progress {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: var(--font-ui);
+  color: var(--ll-ink-500, #647084);
+}
+
+.ll-course-path-track-progress strong {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--track-accent, #5bae6f);
+  letter-spacing: -0.02em;
+}
+
+.ll-course-path-track-progress span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Row of cards. Default: 5 columns. Wraps on narrow viewports without
+   horizontal scroll. */
+.ll-course-path-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1280px) {
+  .ll-course-path-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .ll-course-path-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ll-course-path-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .ll-course-path-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ----- Card itself ----- */
+
+.ll-course-path-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-radius: 18px;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  color: var(--ll-ink-900, #1f3a2c);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s ease, border-color 0.22s ease;
+  min-height: 142px;
+  /* .ll-glass provides backdrop-filter + base background + border */
+  /* override the inherited large radius from .ll-glass */
+  border: 1px solid var(--ll-glass-border, rgba(255, 255, 255, 0.65));
+  overflow: hidden;
+}
+
+.ll-course-path-card[data-state="active"] {
+  border-color: color-mix(in srgb, var(--cpc-accent) 55%, transparent);
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--cpc-accent) 16%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.ll-course-path-card[data-state="completed"] {
+  border-color: rgba(15, 157, 88, 0.32);
+  background: linear-gradient(
+    180deg,
+    rgba(15, 157, 88, 0.05),
+    transparent 60%),
+    var(--ll-glass-bg, rgba(255, 255, 255, 0.7));
+}
+
+.ll-course-path-card[data-state="locked"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+  border-color: rgba(130, 148, 176, 0.18);
+  background: var(--ll-glass-bg, rgba(247, 250, 247, 0.5));
+  box-shadow: none;
+  filter: saturate(0.6);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ll-course-path-card:not([data-state="locked"]):hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 14px 30px color-mix(in srgb, var(--cpc-accent) 18%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+  .ll-course-path-card[data-state="completed"]:hover {
+    box-shadow:
+      0 14px 30px rgba(15, 157, 88, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
+.ll-course-path-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ll-course-path-card-level {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cpc-level-tint) 55%, transparent);
+  color: var(--ll-ink-900, #1f3a2c);
+  text-transform: uppercase;
+}
+
+.ll-course-path-card-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ll-course-path-card-state img {
+  display: block;
+}
+
+.ll-course-path-card-active-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--cpc-accent);
+  color: white;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+}
+
+.ll-course-path-card-title {
+  margin: 2px 0 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: inherit;
+  letter-spacing: -0.005em;
+  /* clamp to 2 lines max, otherwise card heights vary */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.ll-course-path-card-meta {
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  color: var(--ll-ink-500, #647084);
+}
+
+/* Progress bar + shimmer */
+.ll-course-path-card-progress {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(130, 148, 176, 0.16);
+  overflow: hidden;
+}
+
+.ll-course-path-card-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--cpc-accent),
+    color-mix(in srgb, var(--cpc-accent) 60%, white)
+  );
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ll-course-path-card[data-state="completed"] .ll-course-path-card-progress-fill {
+  background: linear-gradient(90deg, #0f9d58, #5bd590);
+}
+
+/* Loading-style shimmer that runs across the active card's progress bar. */
+.ll-course-path-card-progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent
+  );
+  animation: ll-course-path-shimmer 1.8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes ll-course-path-shimmer {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-course-path-card,
+  .ll-course-path-card-progress-fill,
+  .ll-course-path-card-progress-shimmer {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 .ll-list-panel {
   display: grid;
   overflow: hidden;
