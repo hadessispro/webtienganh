@@ -92,7 +92,7 @@ export function AuthStudio() {
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(profile));
     setSaved(true);
     window.setTimeout(() => {
-      window.location.href = "/placement";
+      window.location.href = "/learn";
     }, 450);
   }
 

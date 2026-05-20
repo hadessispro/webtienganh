@@ -353,7 +353,7 @@ export function AdminDashboard() {
             </button>
           ))}
         </nav>
-        <Link className="rail-link" href="/placement"><AdminIcon name="learn" />Placement</Link>
+        <Link className="rail-link" href="/learn"><AdminIcon name="learn" />User</Link>
       </aside>
 
       <aside className="admin-sidebar-panel">

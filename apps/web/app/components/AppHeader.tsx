@@ -1,16 +1,16 @@
 import Link from "next/link";
 
-type SiteRoute = "/" | "/placement" | "/admin" | "/pricing" | "/blog" | "/contact" | "/auth";
+type SiteRoute = "/" | "/learn" | "/placement" | "/admin" | "/pricing" | "/blog" | "/contact" | "/auth";
 
 type AppHeaderProps = {
-  active?: "home" | "placement" | "admin" | "pricing" | "blog" | "contact" | "auth";
+  active?: "home" | "learn" | "placement" | "admin" | "pricing" | "blog" | "contact" | "auth";
   actionHref?: SiteRoute;
   actionLabel?: string;
 };
 
 const navItems = [
   { href: "/", label: "Trang chủ", id: "home" },
-  { href: "/placement", label: "Đánh giá đầu vào", id: "placement" },
+  { href: "/learn", label: "Phòng học", id: "learn" },
   { href: "/pricing", label: "Gói học", id: "pricing" },
   { href: "/blog", label: "Journal", id: "blog" },
   { href: "/admin", label: "Admin", id: "admin" }

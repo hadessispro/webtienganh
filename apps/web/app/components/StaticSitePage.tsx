@@ -22,7 +22,7 @@ export function StaticSitePage({ content }: StaticSitePageProps) {
         </Link>
         <nav className="nav-pills" aria-label="Điều hướng chính">
           <Link href="/">Trang chủ</Link>
-          <Link href="/placement">Đánh giá đầu vào</Link>
+          <Link href="/learn">Phòng học</Link>
           <Link href="/pricing">Gói học</Link>
           <Link href="/blog">Journal</Link>
           <Link href="/contact">Liên hệ</Link>
@@ -32,13 +32,13 @@ export function StaticSitePage({ content }: StaticSitePageProps) {
             <summary aria-label="Mở menu">Menu</summary>
             <nav aria-label="Điều hướng mobile trang phụ">
               <Link href="/">Trang chủ</Link>
-              <Link href="/placement">Đánh giá đầu vào</Link>
+              <Link href="/learn">Phòng học</Link>
               <Link href="/pricing">Gói học</Link>
               <Link href="/blog">Journal</Link>
               <Link href="/contact">Liên hệ</Link>
             </nav>
           </details>
-          <Link className="ghost-button journey-button" href="/placement">Đánh giá đầu vào</Link>
+          <Link className="ghost-button journey-button" href="/learn">Vào học</Link>
         </div>
       </header>
 
@@ -61,7 +61,7 @@ export function StaticSitePage({ content }: StaticSitePageProps) {
           <h1>{content.title}</h1>
           <p>{content.lead}</p>
           <div className="route-actions">
-            <Link className="hero-cta" href="/placement">{content.primaryAction}</Link>
+            <Link className="hero-cta" href="/learn">{content.primaryAction}</Link>
             <Link className="route-link" href="/">{content.secondaryAction}</Link>
           </div>
         </div>

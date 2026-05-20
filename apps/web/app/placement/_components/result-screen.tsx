@@ -61,7 +61,7 @@ export default function ResultScreen({ level, skillScores, onRestart, isFromQuiz
       } catch (e) {
         console.warn("[placement] could not persist", e);
       }
-      window.location.href = "/placement";
+      window.location.href = "/learn";
     }
   };
 
@@ -149,7 +149,7 @@ export default function ResultScreen({ level, skillScores, onRestart, isFromQuiz
         transition={{ duration: 0.6, delay: 1.0 }}
       >
         <button className="result-cta" onClick={handleOpenDashboard}>
-          <span>Xem lại lộ trình</span>
+          <span>Mở dashboard học</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path
               d="M5 12h14M13 6l6 6-6 6"

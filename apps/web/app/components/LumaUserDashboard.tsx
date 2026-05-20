@@ -1250,7 +1250,7 @@ export function LumaUserDashboard() {
     setScheduleDraft((draft) => ({ ...draft, date: scheduleTodayKey, time: dailyTime }));
     setSelectedFlashcardId((loadedFlashcards.length ? loadedFlashcards : defaultFlashcards)[0]?.id ?? "");
     setSelectedCourseId(loadedProfile.enrolledCourseIds[0] ?? loadedCourses[0]?.id ?? defaultCourses[0].id);
-    setPlacementRequired(!loadedProfile.placementCompletedAt);
+    setPlacementRequired(false);
     setPlacementLanguage(loadedProfile.language);
     setPlacementGoal(loadedProfile.goal);
     setPlacementMinutes(loadedProfile.dailyMinutes);
@@ -2205,7 +2205,6 @@ export function LumaUserDashboard() {
                 <h1>Hôm nay, <em>nhẹ nhàng</em> thôi</h1>
               </div>
               <div className="ll-topbar-actions">
-                <button className="ll-btn ghost" onClick={restartPlacement} type="button">Đánh giá trình độ</button>
                 <button className="ll-btn ghost" onClick={() => setActiveView("shadowing")} type="button">Shadowing</button>
                 <button className="ll-btn primary" onClick={() => setActiveView("lesson")} type="button">Vào bài học</button>
               </div>
