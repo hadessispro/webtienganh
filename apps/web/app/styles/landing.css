@@ -642,10 +642,12 @@
   cursor: pointer;
   isolation: isolate;
   border: 1px solid transparent;
-  /* Clip children to the rounded shape without using overflow:hidden
-     (which interacts badly with transformed children + stacking). */
-  clip-path: inset(0 round 100px);
-  /* Smooth CSS fallback — works even if GSAP fails */
+  /* Keep the rounded mask for the fill ::before. box-shadow on
+     the link itself is rendered OUTSIDE this mask in all browsers
+     I know of — overflow:hidden only clips DESCENDANT boxes, not
+     box-shadow which is part of the element's own paint. So the
+     green glow on primary + outline still shows up. */
+  overflow: hidden;
   transition:
     color 0.25s var(--ll-ease-out),
     background-color 0.3s var(--ll-ease-out),
@@ -744,14 +746,14 @@
   color: var(--ll-bg);
   border-color: transparent;
   box-shadow:
-    0 6px 20px rgba(10, 228, 72, 0.25),
+    0 6px 20px rgba(10, 228, 72, 0.3),
     0 1px 2px rgba(0, 0, 0, 0.18);
   --cta-fill-bg: #fffce1;
 }
 .ll-cta--primary:hover {
   color: var(--ll-bg);
   box-shadow:
-    0 10px 32px rgba(10, 228, 72, 0.45),
+    0 12px 32px rgba(10, 228, 72, 0.5),
     0 1px 2px rgba(0, 0, 0, 0.2);
 }
 .ll-cta--primary:hover .ll-cta-text {
@@ -779,6 +781,7 @@
 }
 .ll-cta--ghost:hover {
   border-color: var(--ll-green);
+  box-shadow: 0 0 18px rgba(10, 228, 72, 0.25);
 }
 .ll-cta--ghost:hover .ll-cta-text {
   color: var(--ll-bg);
