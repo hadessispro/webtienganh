@@ -227,17 +227,29 @@ export default function HomePlan2() {
 
       // Horizontal Scroll Section
       let scrollTween: gsap.core.Tween | undefined;
-      if (scrollTrackRef.current) {
-        scrollTween = gsap.to(scrollTrackRef.current, {
-          x: () => -(scrollTrackRef.current!.scrollWidth - window.innerWidth + window.innerWidth * 0.1), // Add extra offset to prevent cut-off
+      const scrollTrackEl = scrollTrackRef.current;
+      if (scrollTrackEl) {
+        // CRITICAL: capture the ref into a local variable above and
+        // use THAT in the callbacks. Previously we called
+        // `scrollTrackRef.current!.scrollWidth` inside x/end callbacks
+        // which GSAP invokes on `invalidateOnRefresh` (resize, font
+        // load, route nav). If the ref was already null by then —
+        // which happens often under React 19 Strict Mode or when
+        // hot-reload re-runs effects — we got
+        // "Cannot read properties of null (reading 'scrollWidth')".
+        // That single throw cascaded into the React error boundary
+        // and made every CTA on the page feel dead (clicks couldn't
+        // propagate because the page was mid-recovery).
+        scrollTween = gsap.to(scrollTrackEl, {
+          x: () => -(scrollTrackEl.scrollWidth - window.innerWidth + window.innerWidth * 0.1),
           ease: "none",
           scrollTrigger: {
             trigger: ".ll-scroll-section",
             pin: true,
-            scrub: 1, // Smooth scrubbing
+            scrub: 1,
             start: "center center",
-            end: () => `+=${scrollTrackRef.current!.scrollWidth - window.innerWidth + window.innerWidth * 0.1}`,
-            invalidateOnRefresh: true, // Recalculate on resize/font load
+            end: () => `+=${scrollTrackEl.scrollWidth - window.innerWidth + window.innerWidth * 0.1}`,
+            invalidateOnRefresh: true,
           },
         });
 
