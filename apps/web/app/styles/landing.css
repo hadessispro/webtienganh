@@ -608,11 +608,25 @@
 }
 
 /* =================================================================
-   LandingCta — unified CTA button used everywhere on the landing
-   page (header, hero, feature rows, final block). The hover
-   machinery (magnetic, directional fill, shimmer) is wired in JS
-   inside app/page.tsx — see the useEffect that queries `.ll-cta`.
-   This block defines only the looks.
+   LandingCta — unified landing-page button.
+
+   Design philosophy after debugging round 1:
+   - **CSS-first hover**. The fill, color invert, and glow are all
+     pure CSS `:hover`. They WILL work regardless of whether GSAP
+     boots, JS errors, or React hydration races. This is the most
+     important fix.
+   - **GSAP adds frosting only**: magnetic translate, press squash,
+     shimmer sweep. None of these are required for the button to
+     feel responsive.
+   - **No `overflow: hidden`** on the link itself. Previous version
+     clipped child transforms but also caused subtle stacking
+     issues. We use the fill's own `border-radius: inherit` + a
+     `clip-path: inset(0 round 100px)` so children stay clipped
+     without affecting click-through.
+   - **Fill is a CSS pseudo-element** (`::before`), not a child
+     `<span>`. One fewer DOM node, can't accidentally block clicks.
+   - **Shimmer is a child `<span>`** because GSAP needs to animate
+     `left` on it independently.
    ================================================================= */
 
 .ll-cta {
@@ -626,15 +640,20 @@
   font-family: inherit;
   font-weight: 600;
   cursor: pointer;
-  overflow: hidden;
   isolation: isolate;
-  will-change: transform;
   border: 1px solid transparent;
-  /* Smooth fallback if JS hasn't booted yet */
+  /* Clip children to the rounded shape without using overflow:hidden
+     (which interacts badly with transformed children + stacking). */
+  clip-path: inset(0 round 100px);
+  /* Smooth CSS fallback — works even if GSAP fails */
   transition:
     color 0.25s var(--ll-ease-out),
-    border-color 0.25s var(--ll-ease-out),
-    box-shadow 0.25s var(--ll-ease-out);
+    background-color 0.3s var(--ll-ease-out),
+    border-color 0.3s var(--ll-ease-out),
+    box-shadow 0.3s var(--ll-ease-out),
+    transform 0.18s var(--ll-ease-out);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .ll-cta:focus-visible {
@@ -642,24 +661,44 @@
   outline-offset: 4px;
 }
 
-/* Inner pieces — all positioned via the CTA, GSAP-targeted by class */
-.ll-cta-fill {
+/* The fill is a pseudo-element that scales from 0 to 1 on hover.
+   Positioned via CSS vars updated by JS on mouseenter/mousemove,
+   so the fill grows from the cursor's entry point. Defaults to
+   center if JS hasn't booted. */
+.ll-cta::before {
+  content: "";
+  position: absolute;
+  /* CSS vars updated by JS — defaults center the fill */
+  left: var(--cta-fx, 50%);
+  top: var(--cta-fy, 50%);
+  width: 250%;
+  /* Use aspect-ratio so the fill stays circular regardless of
+     button dimensions */
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: var(--cta-fill-bg, var(--ll-text));
+  transform: translate(-50%, -50%) scale(0);
+  transform-origin: center;
+  transition: transform 0.45s var(--ll-ease-out);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ll-cta:hover::before,
+.ll-cta:focus-visible::before {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Shimmer is a child span (GSAP animates left on it) */
+.ll-cta-shimmer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  border-radius: 50%;
-  /* Sized 250% so when scaled it overflows the pill, then GSAP
-     translates it to wherever the cursor entered. */
-  width: 250%;
-  height: 250%;
-  top: 0;
-  left: 0;
-  /* Pre-set hidden state so there's no flash before GSAP runs */
-  transform: translate(-50%, -50%) scale(0);
+  z-index: 1;
+  overflow: hidden;
 }
-
-.ll-cta-shimmer {
+.ll-cta-shimmer::after {
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
@@ -672,8 +711,6 @@
     transparent
   );
   transform: skewX(-20deg);
-  pointer-events: none;
-  z-index: 1;
 }
 
 .ll-cta-text {
@@ -682,58 +719,69 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
-  will-change: transform, color;
-  /* Smooth fallback only — GSAP overrides during hover */
-  transition: color 0.25s var(--ll-ease-out);
+  transition: color 0.3s var(--ll-ease-out);
+  pointer-events: none; /* let clicks fall through to the <a> */
 }
 
 .ll-cta-icon {
   display: inline-flex;
   align-items: center;
-  margin-left: 0.25em;
+}
+
+/* Help GSAP not fight with us on the magnetic transform: we apply
+   transforms to a wrapper, not the <a> itself. But we still need
+   the <a> to be the focus target. Keep transform-origin centered
+   so the press squash looks right. */
+.ll-cta {
+  transform-origin: center;
 }
 
 /* ── Variants ── */
 
 .ll-cta--primary {
-  background: var(--ll-gradient-green);
+  background-color: #0ae448;
+  background-image: var(--ll-gradient-green);
   color: var(--ll-bg);
   border-color: transparent;
   box-shadow:
     0 6px 20px rgba(10, 228, 72, 0.25),
     0 1px 2px rgba(0, 0, 0, 0.18);
-}
-.ll-cta--primary .ll-cta-fill {
-  background: #fffce1;
+  --cta-fill-bg: #fffce1;
 }
 .ll-cta--primary:hover {
+  color: var(--ll-bg);
   box-shadow:
-    0 10px 32px rgba(10, 228, 72, 0.4),
+    0 10px 32px rgba(10, 228, 72, 0.45),
     0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.ll-cta--primary:hover .ll-cta-text {
+  color: var(--ll-bg);
 }
 
 .ll-cta--outline {
-  background: transparent;
+  background-color: transparent;
   color: var(--ll-green);
   border-color: var(--ll-green);
-}
-.ll-cta--outline .ll-cta-fill {
-  background: var(--ll-green);
+  --cta-fill-bg: var(--ll-green);
 }
 .ll-cta--outline:hover {
-  box-shadow: 0 0 24px rgba(10, 228, 72, 0.3);
+  box-shadow: 0 0 28px rgba(10, 228, 72, 0.4);
+}
+.ll-cta--outline:hover .ll-cta-text {
+  color: var(--ll-bg);
 }
 
 .ll-cta--ghost {
-  background: transparent;
+  background-color: transparent;
   color: var(--ll-text);
   border-color: rgba(255, 255, 255, 0.4);
-}
-.ll-cta--ghost .ll-cta-fill {
-  background: var(--ll-text);
+  --cta-fill-bg: var(--ll-text);
 }
 .ll-cta--ghost:hover {
   border-color: var(--ll-green);
+}
+.ll-cta--ghost:hover .ll-cta-text {
+  color: var(--ll-bg);
 }
 
 /* ── Sizes ── */
@@ -758,24 +806,17 @@
   transform: scale(0.96);
 }
 
-/* Reduced motion: kill the shimmer + bounce */
+/* Reduced motion: kill the shimmer + magnetic, keep instant fill */
 @media (prefers-reduced-motion: reduce) {
-  .ll-cta-shimmer,
-  .ll-cta-fill {
-    display: none !important;
-  }
-  .ll-cta,
-  .ll-cta-text {
-    transition: color 0.2s ease, background 0.2s ease;
-  }
+  .ll-cta-shimmer { display: none !important; }
+  .ll-cta::before { transition: transform 0.15s ease; }
+  .ll-cta { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
 }
 
-/* Mobile: no magnetic effect (touch devices), but keep press feedback */
+/* Mobile / touch: no magnetic, no shimmer, but :active still squashes */
 @media (hover: none) {
-  .ll-cta {
-    transform: none !important;
+  .ll-cta:active {
+    transform: scale(0.96);
   }
-  .ll-cta-text {
-    transform: none !important;
-  }
+  .ll-cta-shimmer { display: none; }
 }

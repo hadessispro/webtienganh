@@ -310,139 +310,63 @@ export default function HomePlan2() {
       }
 
       // ────────────────────────────────────────────────────────────
-      // Unified GSAP CTA hover wiring
-      // Picks up every .ll-cta button on the page (header, hero,
-      // feature rows, final block). Each button has the same DOM
-      // structure: .ll-cta-fill / .ll-cta-shimmer / .ll-cta-text.
-      // Effects:
-      //   - magnetic pull (the button drifts toward the cursor)
-      //   - directional fill (circular fill grows from entry point)
-      //   - continuous shimmer (sweeps every few seconds)
-      //   - active press (squash on pointerdown, springs back)
-      // Cleanup: handlers are stored in `ctaCleanups` (declared at
-      // outer scope so the useEffect return can reach them).
+      // CTA frosting (GSAP only adds icing, CSS does the real work)
+      //
+      // CSS handles: hover state, fill grow, color invert, focus ring.
+      // GSAP adds:   the directional fill origin (via CSS vars set
+      //              from pointer events), the press-down squash
+      //              class, optional shimmer sweep.
+      //
+      // CRITICAL difference from the previous version:
+      //  - No `gsap.to(btn, {x, y})` magnetic translate. Transforming
+      //    the <a> link itself was causing hover/click flakiness.
+      //  - The fill is a CSS pseudo-element (::before) that scales
+      //    via :hover. JS only updates --cta-fx and --cta-fy CSS vars
+      //    so the fill origin tracks the cursor. Even with JS off,
+      //    the button still has a centered hover fill.
       // ────────────────────────────────────────────────────────────
       const ctaButtons = document.querySelectorAll<HTMLElement>(".ll-cta");
 
       ctaButtons.forEach((btn) => {
-        const fill = btn.querySelector<HTMLElement>(".ll-cta-fill");
-        const text = btn.querySelector<HTMLElement>(".ll-cta-text");
-        const shimmer = btn.querySelector<HTMLElement>(".ll-cta-shimmer");
-
-        // The original colour, restored on mouseleave
-        const originalColor = window.getComputedStyle(btn).color;
-
-        if (fill) {
-          gsap.set(fill, { xPercent: -50, yPercent: -50, scale: 0 });
-        }
-
-        // Continuous shimmer — gated by reduced-motion preference
-        const reducedMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-        let shimmerTween: gsap.core.Tween | null = null;
-        if (shimmer && !reducedMotion) {
-          shimmerTween = gsap.to(shimmer, {
-            left: "200%",
-            duration: 1.5,
-            ease: "power2.inOut",
-            repeat: -1,
-            repeatDelay: 3,
-          });
-        }
-
-        const onEnter = (e: MouseEvent) => {
-          if (reducedMotion) return;
+        const onPointerEnter = (e: PointerEvent) => {
           const rect = btn.getBoundingClientRect();
-          const relX = e.clientX - rect.left;
-          const relY = e.clientY - rect.top;
-          if (fill) {
-            gsap.set(fill, { x: relX, y: relY, scale: 0 });
-            gsap.to(fill, { scale: 2.5, duration: 0.45, ease: "power2.out" });
-          }
-          if (text) {
-            // Pick the inverse colour based on variant
-            const inverseColor = btn.classList.contains("ll-cta--ghost")
-              ? "var(--ll-bg)"
-              : btn.classList.contains("ll-cta--outline")
-              ? "var(--ll-bg)"
-              : "var(--ll-bg)";
-            gsap.to(text, { color: inverseColor, duration: 0.3 });
-          }
+          btn.style.setProperty("--cta-fx", `${e.clientX - rect.left}px`);
+          btn.style.setProperty("--cta-fy", `${e.clientY - rect.top}px`);
         };
 
-        const onMove = (e: MouseEvent) => {
-          if (reducedMotion) return;
+        const onPointerMove = (e: PointerEvent) => {
+          // Keep the fill origin updated while hovering so it tracks
+          // the cursor. Cheap: only sets two CSS vars per event.
           const rect = btn.getBoundingClientRect();
-          const x = e.clientX - rect.left - rect.width / 2;
-          const y = e.clientY - rect.top - rect.height / 2;
-          gsap.to(btn, {
-            x: x * 0.18,
-            y: y * 0.18,
-            duration: 0.35,
-            ease: "power2.out",
-          });
-          if (text) {
-            gsap.to(text, {
-              x: x * 0.08,
-              y: y * 0.08,
-              duration: 0.35,
-              ease: "power2.out",
-            });
-          }
+          btn.style.setProperty("--cta-fx", `${e.clientX - rect.left}px`);
+          btn.style.setProperty("--cta-fy", `${e.clientY - rect.top}px`);
         };
 
-        const onLeave = (e: MouseEvent) => {
-          if (reducedMotion) return;
+        const onPointerLeave = (e: PointerEvent) => {
+          // Freeze the origin at the exit point so the CSS retract
+          // looks directional, not centered.
           const rect = btn.getBoundingClientRect();
-          const relX = e.clientX - rect.left;
-          const relY = e.clientY - rect.top;
-          if (fill) {
-            gsap.to(fill, {
-              x: relX,
-              y: relY,
-              scale: 0,
-              duration: 0.45,
-              ease: "power2.in",
-            });
-          }
-          if (text) {
-            gsap.to(text, {
-              color: originalColor,
-              x: 0,
-              y: 0,
-              duration: 0.45,
-              ease: "power2.out",
-            });
-          }
-          gsap.to(btn, {
-            x: 0,
-            y: 0,
-            duration: 0.6,
-            ease: "elastic.out(1, 0.35)",
-          });
+          btn.style.setProperty("--cta-fx", `${e.clientX - rect.left}px`);
+          btn.style.setProperty("--cta-fy", `${e.clientY - rect.top}px`);
         };
 
         const onPressDown = () => btn.classList.add("is-pressed");
         const onPressUp = () => btn.classList.remove("is-pressed");
 
-        btn.addEventListener("mouseenter", onEnter);
-        btn.addEventListener("mousemove", onMove);
-        btn.addEventListener("mouseleave", onLeave);
+        btn.addEventListener("pointerenter", onPointerEnter);
+        btn.addEventListener("pointermove", onPointerMove);
+        btn.addEventListener("pointerleave", onPointerLeave);
         btn.addEventListener("pointerdown", onPressDown);
         btn.addEventListener("pointerup", onPressUp);
         btn.addEventListener("pointercancel", onPressUp);
-        btn.addEventListener("pointerleave", onPressUp);
 
         ctaCleanups.push(() => {
-          btn.removeEventListener("mouseenter", onEnter);
-          btn.removeEventListener("mousemove", onMove);
-          btn.removeEventListener("mouseleave", onLeave);
+          btn.removeEventListener("pointerenter", onPointerEnter);
+          btn.removeEventListener("pointermove", onPointerMove);
+          btn.removeEventListener("pointerleave", onPointerLeave);
           btn.removeEventListener("pointerdown", onPressDown);
           btn.removeEventListener("pointerup", onPressUp);
           btn.removeEventListener("pointercancel", onPressUp);
-          btn.removeEventListener("pointerleave", onPressUp);
-          shimmerTween?.kill();
         });
       });
 

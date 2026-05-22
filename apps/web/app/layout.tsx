@@ -19,9 +19,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // `suppressHydrationWarning` on <html> and <body> tells React to
+  // ignore mismatches injected by browser extensions (Microsoft
+  // Translator, Google Translate, Grammarly, etc) which modify the
+  // DOM before React hydrates. Without this we get a "hydration
+  // failed because server HTML didn't match client" overlay on
+  // every page load when the user has those extensions installed.
   return (
-    <html lang="vi">
-      <body>
+    <html lang="vi" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <CursorEffect />
         {children}
       </body>
