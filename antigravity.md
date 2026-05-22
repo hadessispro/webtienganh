@@ -4,7 +4,7 @@
 > Read this **before** you grep around blindly. It tells you where things live,
 > what the patterns are, and what's safe to change vs. what looks weird but is on purpose.
 >
-> Last update: 2026-05-20 (after PR3 courses learning-path + typography unify).
+> Last update: 2026-05-23 (after groups community-first redesign + landing CTA unification + `home_plan_2` promoted to `/`).
 > Companion file: see `codex.md` for the most recent PR's review checklist.
 
 ---
@@ -71,7 +71,7 @@ webtienganh/
 
 | Path | File | Renders | Notes |
 |---|---|---|---|
-| `/` | `app/page.tsx` | inline JSX (long) | Marketing landing, scrollytelling, uses `<AppHeader>` |
+| `/` | `app/page.tsx` | inline JSX (~750 lines) | Marketing landing — GSAP scroll typography + 3D pets via `CubePetsScene`. CTAs use `<LandingCta>`. Imports `./styles/landing.css`. The old 978-line scrollytelling landing was retired on 2026-05-23. |
 | `/learn` | `app/learn/page.tsx` | `<LumaUserDashboard />` | **The product**. Sidebar + 9 views |
 | `/placement` | `app/placement/page.tsx` | Stage machine (splash/picker/quiz/result) | Self-contained, deep green theme — different from rest of app |
 | `/admin` | `app/admin/page.tsx` | `<AdminDashboard />` | CRUD-style content management UI |
@@ -91,12 +91,18 @@ All pages wrap their content in `<main className="page-shell theme-light ...">`.
 | `LearnerDashboard.tsx` | 922 | **Older version**, kept around but no longer routed. May contain useful UI fragments. Don't delete without checking. | (unused) |
 | `AdminDashboard.tsx` | 707 | Admin CMS (courses, users, content, tokens, settings) | `/admin` |
 | `KnowledgeTreeScene.tsx` | 332 | three.js 3D scene used inside learner dashboard "Today" view | `LumaUserDashboard` |
+| `CubePetsScene.tsx` | 226 | three.js + @react-three/fiber 3D scene with animal models (cat/dog/lion/penguin), floating speech bubbles. Used on the landing page. | `/` |
 | `AuthStudio.tsx` | 221 | Auth/signup card | `/auth` |
+| `GroupDetailView.tsx` | 185 | One-group detail screen with 7 tabs (overview / chat / deadline / leaderboard / voice / peer / cowatch) | `GroupsView` |
 | `CoursePathGrid.tsx` | 182 | Groups courses by goal track, computes lock states | `LumaUserDashboard` (courses view) |
+| `GroupsView.tsx` | 178 | List view for `/learn → Nhóm`: safety banner + my groups + suggestions + create CTA | `LumaUserDashboard` (group view) |
 | `CoursePathCard.tsx` | 126 | Compact card with lock/active/completed states + shimmer | via `CoursePathGrid` |
 | `StaticSitePage.tsx` | 103 | Renders a static-marketing page from a config object | `/about`, `/blog`, `/contact`, `/pricing` |
 | `CursorEffect.tsx` | 84 | Mounts a custom cursor follow effect on `<body>` | `layout.tsx` (every route) |
-| `AppHeader.tsx` | 69 | Top nav bar with logo + links + action button | `/`, `/auth`, blog pages |
+| `AppHeader.tsx` | 69 | Top nav bar with logo + links + action button | (legacy — landing page now uses its own `.ll-header`) |
+| `LandingCta.tsx` | ~50 | The one CTA component for the landing page. 3 variants × 3 sizes. Hover effects wired in `page.tsx`. | `/` |
+
+Plus `app/components/groups/` (8 sub-components for the group detail view): `SafetyBanner`, `RolePill`, `GroupCard`, `SuggestedGroupCard`, `GroupOverview`, `ChatPanel`, `DeadlinePanel`, `LeaderboardPanel`, `ComingSoonPanel`.
 
 ---
 
@@ -310,6 +316,12 @@ Patterns to copy:
 8. **`prisma/schema.prisma` exists but isn't wired.** No Prisma client is generated; the schema is the design doc for the future backend. Treat it as documentation, not code.
 
 9. **`<em>` tags get auto-defeated.** `globals.css` has `em { font-style: normal }`. Adding new `<em>` won't do what you expect — use `<span className="ll-accent">` instead.
+
+10. **Landing page CTAs ONLY use `<LandingCta>`.** The old `.ll-header-cta`, `.ll-btn`, `.ll-btn--gsap`, `.ll-btn--fill`, `.ll-btn--gsap-hover` classes were retired on 2026-05-23. Six different button implementations were collapsed into one component with 3 variants × 3 sizes. The GSAP wiring lives in `app/page.tsx`'s `useEffect` and queries `.ll-cta` exclusively. Do not introduce a new `.ll-btn--*` variant on the landing page — extend `LandingCta` instead.
+
+11. **`CubePetsScene` requires `@react-three/fiber` + `@react-three/drei`.** Both pinned in `apps/web/package.json`. The .glb models live in `apps/web/public/models/`. If you see TS errors about JSX intrinsic elements like `<group>` or `<ambientLight>`, the deps haven't been installed — run `npm install` from the repo root.
+
+12. **Groups subsystem (PR6) uses Unicode-aware regex.** The chat filter in `lib/group-data.ts` deliberately uses `(?<![\p{L}\p{N}])` instead of `\b` because `\b` fires inside Vietnamese words containing diacritics. Don't "simplify" back to `\b` or you'll start auto-redacting normal Vietnamese words.
 
 ---
 

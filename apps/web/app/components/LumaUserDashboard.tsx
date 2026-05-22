@@ -24,6 +24,8 @@ import {
   providerLabels
 } from "../lib/product-data";
 import { CoursePathGrid } from "./CoursePathGrid";
+import { GroupsView } from "./GroupsView";
+import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
 
 gsap.registerPlugin(useGSAP);
 
@@ -2969,61 +2971,16 @@ export function LumaUserDashboard() {
         ) : null}
 
         {activeView === "group" ? (
-          <div className="ll-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Nhóm học · {studyGroups.length} nhóm</div>
-                <h1>Cùng <span className="ll-accent">tiến bộ</span></h1>
-              </div>
-              <div className="ll-topbar-actions">
-                <button className="ll-btn ghost" type="button">Tìm nhóm</button>
-                <button className="ll-btn primary" type="button">+ Tạo nhóm</button>
-              </div>
-            </header>
-            <div className="ll-card-grid ll-group-grid">
-              <div className="ll-card-grid ll-grid-2">
-                {studyGroups.map((group) => (
-                  <article className="ll-group-card ll-glass" key={group.id}>
-                    <div className={`ll-group-banner ${group.bannerClass}`} />
-                    <div className="ll-group-avatars" aria-hidden="true">
-                      {group.avatars.map((avatar, avatarIndex) => (
-                        <span className={`ll-group-avatar tone-${avatarIndex}`} key={`${group.id}-${avatar}`}>{avatar}</span>
-                      ))}
-                      {group.extraMembers ? <span className="ll-group-avatar tone-extra">+{group.extraMembers}</span> : null}
-                    </div>
-                    <div>
-                      <h2>{group.title}</h2>
-                      <p>{group.meta}</p>
-                    </div>
-                    <div className="ll-tags">
-                      {group.tags.map((tag, tagIndex) => (
-                        <span className={tagIndex === 0 && tag === "IELTS" ? "ll-tag orange" : tagIndex === 0 ? "ll-tag" : "ll-tag gray"} key={tag}>{tag}</span>
-                      ))}
-                    </div>
-                    <button className="ll-btn mint" onClick={() => toggleGroup(group.id)} type="button">{joinedGroupIds.includes(group.id) ? "Đã tham gia" : "Tham gia"}</button>
-                  </article>
-                ))}
-                <button className="ll-group-create-card ll-glass" type="button">
-                  <span aria-hidden="true">+</span>
-                  <strong>Tạo nhóm mới</strong>
-                  <small>Học cùng bạn bè</small>
-                </button>
-              </div>
-              <section className="ll-leaderboard-panel ll-glass">
-                <div className="ll-leaderboard-head">
-                  <h2>Bảng xếp hạng tuần</h2>
-                </div>
-                {leaderboardRows.map((row) => (
-                  <div className={row.current ? "ll-leaderboard-row current" : "ll-leaderboard-row"} key={row.name}>
-                    <span className={`ll-rank ${row.rankTone ?? ""}`}>{row.rank}</span>
-                    <span className={`ll-group-avatar tone-${row.tone}`}>{row.initials}</span>
-                    <strong className="ll-lb-name">{row.name}</strong>
-                    <b className="ll-lb-score">{row.current ? studyScore.toFixed(1) : row.score}</b>
-                  </div>
-                ))}
-              </section>
-            </div>
-          </div>
+          <GroupsView
+            groups={defaultStudyGroupsV2}
+            currentUserId="m-self"
+            joinedGroupIds={joinedGroupIds}
+            onJoinRequest={(groupId) => toggleGroup(groupId)}
+            onCreateGroup={() => {
+              // TODO: open create-group modal in v1.1
+              console.log("Create group flow not yet implemented");
+            }}
+          />
         ) : null}
 
         {activeView === "profile" ? (

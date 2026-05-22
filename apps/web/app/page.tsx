@@ -1,978 +1,754 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  calculateCompletionPercent,
-  generateLearningPath,
-  generatePracticeTest,
-  generateTodayTasks,
-  type Question
-} from "./lib/learning-core";
-import { KnowledgeTreeScene } from "./components/KnowledgeTreeScene";
+import React, { useEffect, useRef } from "react";
+import Link from "next/link";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import CubePetsScene from "./components/CubePetsScene";
+import { LandingCta } from "./components/LandingCta";
+import "./styles/landing.css";
 
-type GoalKey = "exam" | "work" | "foundation";
-type TimeKey = "5" | "10" | "15" | "25";
-type SelectId = "language" | "level" | null;
-type PlannerTab = "path" | "sound" | "space";
-type TrackKey = "lofi" | "rain" | "deep" | "piano" | "cafe" | "brown" | "spotifyPop" | "spotifyAcoustic";
-type ShadowLanguage = "en" | "ja" | "ko";
-type ThemeMode = "light" | "dark";
+// Decorative SVGs for GSAP-like Features Section
+const SvgGradientU = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradU" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#4facfe" />
+        <stop offset="100%" stopColor="#f093fb" />
+      </linearGradient>
+    </defs>
+    <path d="M0 200 V100 C0 44.77 44.77 0 100 0 C155.23 0 200 44.77 200 100 V200 H130 V100 C130 83.43 116.57 70 100 70 C83.43 70 70 83.43 70 100 V200 Z" fill="url(#gradU)"/>
+  </svg>
+);
 
-const goals: Record<
-  GoalKey,
-  {
-    label: string;
-    short: string;
-    description: string;
-    accent: string;
-    path: string[];
-    today: string[];
-    shadowing: string;
-    testMode: string;
-  }
-> = {
-  exam: {
-    label: "Học để thi",
-    short: "Thi",
-    description: "Lộ trình theo mục tiêu điểm, deadline, mock test và câu hỏi đã kiểm duyệt.",
-    accent: "blue",
-    path: ["Placement test", "Lấp lỗ hổng ngữ pháp", "Reading drills", "Listening sets", "Mock test theo blueprint"],
-    today: ["12 câu vocabulary", "1 passage reading", "5 phút chữa lỗi"],
-    shadowing: "Clip nghe ngắn theo tốc độ đề thi",
-    testMode: "Random đề từ question bank, không dùng AI sinh câu hỏi trực tiếp"
-  },
-  work: {
-    label: "Giao tiếp công việc",
-    short: "Công việc",
-    description: "Kịch bản meeting, phỏng vấn, email, thuyết trình và AI roleplay có quota.",
-    accent: "green",
-    path: ["Đánh giá phản xạ", "Cụm câu công việc", "Roleplay có kịch bản", "Shadowing meeting", "Báo cáo tiến bộ tuần"],
-    today: ["Warm-up 3 phút", "Roleplay meeting", "Shadowing 1 đoạn hội thoại"],
-    shadowing: "Meeting: giving a short update",
-    testMode: "Tạo bài luyện tình huống từ template và rubric"
-  },
-  foundation: {
-    label: "Bổ túc kiến thức",
-    short: "Nền tảng",
-    description: "Vá lỗ hổng từ vựng, phát âm, ngữ pháp và nghe đọc cơ bản bằng micro-lesson.",
-    accent: "violet",
-    path: ["Skill map đầu vào", "Micro grammar", "SRS flashcards", "Listening basics", "Review thích nghi"],
-    today: ["8 flashcards", "1 mini grammar", "Typing correction"],
-    shadowing: "Phát âm câu ngắn và nhịp điệu cơ bản",
-    testMode: "Quiz nhỏ từ bài đã học, tự động lặp lại điểm yếu"
-  }
-};
+const SvgGradientSquare = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradSquare" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ff4e50" />
+        <stop offset="100%" stopColor="#f9d423" />
+      </linearGradient>
+    </defs>
+    <path d="M20 0 H180 C191.04 0 200 8.95 200 20 V180 C200 191.04 191.04 200 180 200 H100 C44.77 200 0 155.23 0 100 V20 C0 8.95 8.95 0 20 0 Z" fill="url(#gradSquare)"/>
+  </svg>
+);
 
-const timeOptions: TimeKey[] = ["5", "10", "15", "25"];
-const languages = ["Tiếng Anh", "Tiếng Nhật", "Tiếng Hàn", "Tiếng Trung"];
-const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-const shadowLanguages: Record<ShadowLanguage, string> = {
-  en: "English",
-  ja: "日本語",
-  ko: "한국어"
-};
-const shadowCatalog: Record<
-  ShadowLanguage,
-  Array<{ title: string; level: string; duration: string; source: string; focus: string; line: string }>
-> = {
-  en: [
-    {
-      title: "Meeting update",
-      level: "A2-B1",
-      duration: "2:10",
-      source: "Own clip",
-      focus: "Work speaking",
-      line: "Could you walk me through the update?"
-    },
-    {
-      title: "Cafe small talk",
-      level: "A1-A2",
-      duration: "1:35",
-      source: "Licensed/CC",
-      focus: "Daily rhythm",
-      line: "Can I get a table by the window?"
-    }
-  ],
-  ja: [
-    {
-      title: "コンビニで買い物",
-      level: "N5-N4",
-      duration: "1:45",
-      source: "Own clip",
-      focus: "Polite phrases",
-      line: "温めますか。"
-    },
-    {
-      title: "自己紹介",
-      level: "N5",
-      duration: "1:20",
-      source: "Common Voice audio",
-      focus: "Pitch accent",
-      line: "はじめまして、よろしくお願いします。"
-    }
-  ],
-  ko: [
-    {
-      title: "카페 주문하기",
-      level: "TOPIK 1",
-      duration: "1:40",
-      source: "Own clip",
-      focus: "Ordering",
-      line: "아이스 아메리카노 하나 주세요."
-    },
-    {
-      title: "회사 인사",
-      level: "A2",
-      duration: "1:25",
-      source: "Licensed/CC",
-      focus: "Work greeting",
-      line: "오늘 회의는 몇 시에 시작해요?"
-    }
-  ]
-};
-const musicTracks: Record<
-  TrackKey,
-  { label: string; description: string; bestFor: string; source: "generated" | "spotify" }
-> = {
-  lofi: {
-    label: "Lo-fi nhẹ",
-    description: "Pad ấm, nhịp chậm, hợp học từ vựng và viết câu.",
-    bestFor: "Bổ túc kiến thức",
-    source: "generated"
-  },
-  rain: {
-    label: "Mưa tập trung",
-    description: "Nền noise mềm, giảm phân tâm khi đọc hoặc làm đề.",
-    bestFor: "Học để thi",
-    source: "generated"
-  },
-  deep: {
-    label: "Deep focus",
-    description: "Âm drone rất nhỏ, hợp shadowing và luyện nói chậm.",
-    bestFor: "Giao tiếp",
-    source: "generated"
-  },
-  piano: {
-    label: "Piano tối giản",
-    description: "Nền hợp âm rất thưa, phù hợp đọc và ghi nhớ mẫu câu.",
-    bestFor: "Đọc hiểu",
-    source: "generated"
-  },
-  cafe: {
-    label: "Quán cà phê",
-    description: "Không gian sáng nhẹ, hợp học buổi sáng hoặc ôn flashcard.",
-    bestFor: "Ôn tập",
-    source: "generated"
-  },
-  brown: {
-    label: "Brown noise",
-    description: "Dải thấp êm, giúp giảm tiếng ồn xung quanh khi làm bài.",
-    bestFor: "Làm đề",
-    source: "generated"
-  },
-  spotifyPop: {
-    label: "Pop có lời",
-    description: "Kết nối Spotify để nghe playlist phổ biến theo ngôn ngữ đang học.",
-    bestFor: "Thư giãn",
-    source: "spotify"
-  },
-  spotifyAcoustic: {
-    label: "Acoustic có lời",
-    description: "Dùng playlist licensed, không hiển thị lời bài hát nếu chưa có quyền.",
-    bestFor: "Shadowing nhẹ",
-    source: "spotify"
-  }
-};
+const SvgGradientStar = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradStar" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ff0844" />
+        <stop offset="100%" stopColor="#ffb199" />
+      </linearGradient>
+    </defs>
+    <path d="M100 0 C100 55.23 55.23 100 0 100 C55.23 100 100 144.77 100 200 C100 144.77 144.77 100 200 100 C144.77 100 100 55.23 100 0 Z" fill="url(#gradStar)"/>
+  </svg>
+);
 
-export default function Home() {
-  const [goal, setGoal] = useState<GoalKey>("work");
-  const [time, setTime] = useState<TimeKey>("10");
-  const [language, setLanguage] = useState("Tiếng Anh");
-  const [level, setLevel] = useState("A2");
-  const [connected, setConnected] = useState(false);
-  const [query, setQuery] = useState("");
-  const [openSelect, setOpenSelect] = useState<SelectId>(null);
-  const [plannerTab, setPlannerTab] = useState<PlannerTab>("path");
-  const [activeTrack, setActiveTrack] = useState<TrackKey>("lofi");
-  const [shadowLanguage, setShadowLanguage] = useState<ShadowLanguage>("en");
-  const [selectedClipIndex, setSelectedClipIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(28);
-  const [selectedDays, setSelectedDays] = useState([0, 1, 2, 3, 4]);
-  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
-  const [practiceTest, setPracticeTest] = useState<Question[]>([]);
-  const [planStatus, setPlanStatus] = useState("Chưa lưu");
-  const [aiTurnsLeft, setAiTurnsLeft] = useState(4);
-  const [themeMode, setThemeMode] = useState<ThemeMode>("light");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
-  const sourceRefs = useRef<Array<OscillatorNode | AudioBufferSourceNode>>([]);
+const SvgFlower = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 0C50 27.6142 27.6142 50 0 50C27.6142 50 50 72.3858 50 100C50 72.3858 72.3858 50 100 50C72.3858 50 50 27.6142 50 0Z" fill="url(#paint0_linear)"/>
+    <defs>
+      <linearGradient id="paint0_linear" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fec5fb" />
+        <stop offset="1" stopColor="#f100cb" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
 
-  const selectedGoal = goals[goal];
-  const dailyMinutes = Number(time);
-  const pathSteps = useMemo(
-    () => generateLearningPath({ goal, language, level, dailyMinutes }),
-    [dailyMinutes, goal, language, level]
+const SvgRing = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="35" stroke="url(#paint1_linear)" strokeWidth="30" />
+    <defs>
+      <linearGradient id="paint1_linear" x1="15" y1="15" x2="85" y2="85" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#00bae2" />
+        <stop offset="1" stopColor="#9d95ff" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const SvgDiamond = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M25 0L50 25L25 50L0 25L25 0Z" fill="#ff8709"/>
+  </svg>
+);
+
+// New Abstract Geometric Shapes (shapes.gallery style)
+const SvgSparkle = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 0 C 50 40 60 50 100 50 C 60 50 50 60 50 100 C 50 60 40 50 0 50 C 40 50 50 40 50 0 Z" fill="url(#spark_grad)"/>
+    <defs>
+      <linearGradient id="spark_grad" x1="0" y1="0" x2="100" y2="100">
+        <stop stopColor="#ff4d00" />
+        <stop offset="1" stopColor="#ff9d00" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const SvgSquiggle = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 30 Q 80 30 80 50 T 20 70" stroke="url(#squig_grad)" strokeWidth="25" strokeLinecap="round" fill="none" />
+    <defs>
+      <linearGradient id="squig_grad" x1="0" y1="0" x2="100" y2="100">
+        <stop stopColor="#00E676" />
+        <stop offset="1" stopColor="#1DE9B6" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const SvgGeoX = ({ className = "", style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 20 L 40 20 L 50 40 L 60 20 L 80 20 L 60 50 L 80 80 L 60 80 L 50 60 L 40 80 L 20 80 L 40 50 Z" fill="url(#geox_grad)"/>
+    <defs>
+      <linearGradient id="geox_grad" x1="0" y1="0" x2="100" y2="100">
+        <stop stopColor="#651FFF" />
+        <stop offset="1" stopColor="#D500F9" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export default function HomePlan2() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollTrackRef = useRef<HTMLDivElement>(null);
+
+  // Helper component to split text into animated characters
+  const SplitChars = ({ text, className = "" }: { text: string, className?: string }) => (
+    <span style={{ display: 'inline-block', whiteSpace: 'nowrap' }} className={className}>
+      {text.split('').map((char, i) => (
+        <span key={i} className="hero-char" style={{ display: 'inline-block', whiteSpace: 'pre' }}>
+          {char}
+        </span>
+      ))}
+    </span>
   );
-  const todayTasks = useMemo(
-    () => generateTodayTasks({ goal, language, dailyMinutes }),
-    [dailyMinutes, goal, language]
+
+  // Helper component to split text into animated words
+  const SplitWords = ({ text, className = "" }: { text: string, className?: string }) => (
+    <span className={className}>
+      {text.split(' ').map((word, i) => (
+        <span key={i} className="scrub-word" style={{ display: 'inline-block', marginRight: '0.25em' }}>
+          {word}
+        </span>
+      ))}
+    </span>
   );
-  const weeklyLoad = useMemo(() => dailyMinutes * selectedDays.length, [dailyMinutes, selectedDays.length]);
-  const completedToday = completedTaskIds.filter((taskId) => todayTasks.some((task) => task.id === taskId)).length;
-  const completionPercent = calculateCompletionPercent(todayTasks.length, completedToday);
-  const selectedClip = shadowCatalog[shadowLanguage][selectedClipIndex] ?? shadowCatalog[shadowLanguage][0];
-  const treeLeaves = Math.max(6, selectedDays.length + completedToday * 4);
+
+  // Helper component to split text into animated words with GSAP Outline-to-Fill effect
+  const SplitWordsGSAP = ({ text, className = "", fillColor = "rgba(255,255,255,1)" }: { text: string, className?: string, fillColor?: string }) => (
+    <span className={className}>
+      {text.split(' ').map((word, i, arr) => (
+        <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre' }}>
+          <span className="scrub-word-stroke" data-fill={fillColor} style={{ 
+            WebkitTextStroke: '2px rgba(255,255,255,0.2)', 
+            color: 'transparent',
+            display: 'inline-block'
+          }}>
+            {word}
+          </span>
+          {i < arr.length - 1 ? ' ' : ''}
+        </span>
+      ))}
+    </span>
+  );
 
   useEffect(() => {
-    const raw = window.localStorage.getItem("lumalang.mvp-state");
-    if (!raw) {
-      return;
-    }
+    gsap.registerPlugin(ScrollTrigger);
 
-    try {
-      const saved = JSON.parse(raw) as {
-        goal?: GoalKey;
-        time?: TimeKey;
-        language?: string;
-        level?: string;
-        activeTrack?: TrackKey;
-        selectedDays?: number[];
-        completedTaskIds?: string[];
-        aiTurnsLeft?: number;
-        themeMode?: ThemeMode;
-      };
-      if (saved.goal) setGoal(saved.goal);
-      if (saved.time) setTime(saved.time);
-      if (saved.language) setLanguage(saved.language);
-      if (saved.level) setLevel(saved.level);
-      if (saved.activeTrack) setActiveTrack(saved.activeTrack);
-      if (saved.selectedDays) setSelectedDays(saved.selectedDays);
-      if (saved.completedTaskIds) setCompletedTaskIds(saved.completedTaskIds);
-      if (typeof saved.aiTurnsLeft === "number") setAiTurnsLeft(saved.aiTurnsLeft);
-      if (saved.themeMode) setThemeMode(saved.themeMode);
-      setPlanStatus("Đã khôi phục");
-    } catch {
-      window.localStorage.removeItem("lumalang.mvp-state");
-    }
-  }, []);
+    // CTA listener cleanups — populated inside gsap.context below, but
+    // declared at the outer scope so the return cleanup can reach them.
+    const ctaCleanups: Array<() => void> = [];
 
-  useEffect(() => {
-    window.localStorage.setItem(
-      "lumalang.mvp-state",
-      JSON.stringify({
-        goal,
-        time,
-        language,
-        level,
-        activeTrack,
-        selectedDays,
-        completedTaskIds,
-        aiTurnsLeft,
-        themeMode
-      })
-    );
-  }, [activeTrack, aiTurnsLeft, completedTaskIds, goal, language, level, selectedDays, themeMode, time]);
+    const ctx = gsap.context(() => {
+      // 1. Cool GSAP Character Animation for Hero
+      gsap.from(".hero-char", {
+        y: 80,
+        rotationZ: 10,
+        rotationX: -90,
+        opacity: 0,
+        duration: 1.2,
+        stagger: 0.04,
+        ease: "back.out(2)",
+      });
+      
+      gsap.from(".hero-fade", {
+        y: 40,
+        opacity: 0,
+        duration: 1.2,
+        delay: 0.8,
+        ease: "power3.out",
+      });
 
-  useEffect(() => {
-    if (gainRef.current) {
-      gainRef.current.gain.value = volume / 1000;
-    }
-  }, [volume]);
+      // Stable, subtle floating animation for Hero Shapes
+      gsap.to(".hero-shape", {
+        y: "-=15",
+        rotation: "+=10",
+        duration: 4,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1,
+        stagger: 0.2
+      });
 
-  useEffect(() => {
-    return () => {
-      stopFocusAudio();
-    };
-  }, []);
+      // Intro Section Scrub Animation (Word by Word)
+      // First, handle the normal opacity scrub for regular intro text
+      gsap.fromTo(".scrub-word", 
+        { opacity: 0.2 },
+        {
+          opacity: 1,
+          stagger: 0.05,
+          ease: "none",
+          scrollTrigger: {
+            trigger: ".ll-intro-text",
+            start: "top 85%",
+            end: "center center",
+            scrub: true,
+          }
+        }
+      );
 
-  function stopFocusAudio() {
-    sourceRefs.current.forEach((source) => {
-      try {
-        source.stop();
-      } catch {
-        // Already stopped.
+      // Next, handle the massive GSAP-style Stroke-to-Fill effect for the main heading
+      gsap.to(".scrub-word-stroke", {
+        color: (i, el) => el.dataset.fill,
+        WebkitTextStrokeColor: "transparent",
+        stagger: 0.1,
+        ease: "none",
+        scrollTrigger: {
+          trigger: ".ll-intro",
+          start: "top 80%",
+          end: "center center",
+          scrub: true,
+        }
+      });
+
+      // Horizontal Scroll Section
+      let scrollTween: gsap.core.Tween | undefined;
+      if (scrollTrackRef.current) {
+        scrollTween = gsap.to(scrollTrackRef.current, {
+          x: () => -(scrollTrackRef.current!.scrollWidth - window.innerWidth + window.innerWidth * 0.1), // Add extra offset to prevent cut-off
+          ease: "none",
+          scrollTrigger: {
+            trigger: ".ll-scroll-section",
+            pin: true,
+            scrub: 1, // Smooth scrubbing
+            start: "center center",
+            end: () => `+=${scrollTrackRef.current!.scrollWidth - window.innerWidth + window.innerWidth * 0.1}`,
+            invalidateOnRefresh: true, // Recalculate on resize/font load
+          },
+        });
+
+        // 1. SVG Decorators rotating as we scrub
+        gsap.utils.toArray(".ll-scroll-deco-item").forEach((svg: any) => {
+          gsap.to(svg, {
+            rotation: "+=360",
+            scale: 1.2,
+            ease: "none",
+            scrollTrigger: {
+              trigger: svg,
+              containerAnimation: scrollTween,
+              start: "left right",
+              end: "right left",
+              scrub: true,
+            }
+          });
+        });
+
+        // 2. Parallax floating for absolute pills (foreign quotes)
+        gsap.utils.toArray(".ll-scroll-pill.absolute").forEach((pill: any, i) => {
+          gsap.to(pill, {
+            x: i % 2 === 0 ? 150 : -150, // Parallax drift
+            y: i % 2 === 0 ? -30 : 30,
+            rotation: i % 2 === 0 ? "+=5" : "-=5",
+            ease: "none",
+            scrollTrigger: {
+              trigger: pill,
+              containerAnimation: scrollTween,
+              start: "left right",
+              end: "right left",
+              scrub: true,
+            }
+          });
+        });
+
+        // 3. Main text spans color tint when they enter
+        gsap.utils.toArray(".ll-scroll-text span:not(.ll-scroll-pill)").forEach((text: any) => {
+          gsap.from(text, {
+            opacity: 0.2,
+            scale: 0.9,
+            duration: 1,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: text,
+              containerAnimation: scrollTween,
+              start: "left 90%", // When left of text hits 90% of viewport
+              end: "left 50%",   // Finish animation when it reaches center
+              scrub: true,
+            }
+          });
+        });
+
+        // 4. Inline pills bounce/wobble effect
+        gsap.utils.toArray(".ll-scroll-text .ll-scroll-pill:not(.absolute)").forEach((pill: any) => {
+          gsap.from(pill, {
+            y: 50,
+            rotation: "-=15",
+            scale: 0.5,
+            ease: "back.out(1.7)",
+            scrollTrigger: {
+              trigger: pill,
+              containerAnimation: scrollTween,
+              start: "left 85%",
+              end: "left 40%",
+              scrub: true,
+            }
+          });
+        });
       }
-    });
-    sourceRefs.current = [];
-    setIsPlaying(false);
-  }
 
-  function startFocusAudio(track: TrackKey = activeTrack) {
-    stopFocusAudio();
-    if (musicTracks[track].source === "spotify") {
-      return;
-    }
+      // ────────────────────────────────────────────────────────────
+      // Unified GSAP CTA hover wiring
+      // Picks up every .ll-cta button on the page (header, hero,
+      // feature rows, final block). Each button has the same DOM
+      // structure: .ll-cta-fill / .ll-cta-shimmer / .ll-cta-text.
+      // Effects:
+      //   - magnetic pull (the button drifts toward the cursor)
+      //   - directional fill (circular fill grows from entry point)
+      //   - continuous shimmer (sweeps every few seconds)
+      //   - active press (squash on pointerdown, springs back)
+      // Cleanup: handlers are stored in `ctaCleanups` (declared at
+      // outer scope so the useEffect return can reach them).
+      // ────────────────────────────────────────────────────────────
+      const ctaButtons = document.querySelectorAll<HTMLElement>(".ll-cta");
 
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) {
-      return;
-    }
-    const context = audioContextRef.current ?? new AudioContextCtor();
-    audioContextRef.current = context;
+      ctaButtons.forEach((btn) => {
+        const fill = btn.querySelector<HTMLElement>(".ll-cta-fill");
+        const text = btn.querySelector<HTMLElement>(".ll-cta-text");
+        const shimmer = btn.querySelector<HTMLElement>(".ll-cta-shimmer");
 
-    const gain = context.createGain();
-    gain.gain.value = volume / 1000;
-    gain.connect(context.destination);
-    gainRef.current = gain;
+        // The original colour, restored on mouseleave
+        const originalColor = window.getComputedStyle(btn).color;
 
-    if (track === "rain" || track === "cafe" || track === "brown") {
-      const bufferSize = context.sampleRate * 2;
-      const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let index = 0; index < bufferSize; index += 1) {
-        data[index] = (Math.random() * 2 - 1) * (track === "cafe" ? 0.16 : 0.35);
-      }
-      const noise = context.createBufferSource();
-      const filter = context.createBiquadFilter();
-      filter.type = track === "brown" ? "lowpass" : "bandpass";
-      filter.frequency.value = track === "brown" ? 420 : track === "cafe" ? 1300 : 950;
-      noise.buffer = buffer;
-      noise.loop = true;
-      noise.connect(filter);
-      filter.connect(gain);
-      noise.start();
-      sourceRefs.current = [noise];
-    } else {
-      const base = track === "deep" ? 164.81 : track === "piano" ? 261.63 : 220;
-      const frequencies =
-        track === "deep" ? [base, base * 1.5] : track === "piano" ? [base, base * 1.26] : [base, base * 1.25, base * 1.5];
-      sourceRefs.current = frequencies.map((frequency, index) => {
-        const oscillator = context.createOscillator();
-        const filter = context.createBiquadFilter();
-        oscillator.type = track === "piano" ? "sine" : index === 0 ? "sine" : "triangle";
-        oscillator.frequency.value = frequency;
-        filter.type = "lowpass";
-        filter.frequency.value = track === "deep" ? 520 : track === "piano" ? 640 : 780;
-        oscillator.connect(filter);
-        filter.connect(gain);
-        oscillator.start();
-        return oscillator;
+        if (fill) {
+          gsap.set(fill, { xPercent: -50, yPercent: -50, scale: 0 });
+        }
+
+        // Continuous shimmer — gated by reduced-motion preference
+        const reducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        let shimmerTween: gsap.core.Tween | null = null;
+        if (shimmer && !reducedMotion) {
+          shimmerTween = gsap.to(shimmer, {
+            left: "200%",
+            duration: 1.5,
+            ease: "power2.inOut",
+            repeat: -1,
+            repeatDelay: 3,
+          });
+        }
+
+        const onEnter = (e: MouseEvent) => {
+          if (reducedMotion) return;
+          const rect = btn.getBoundingClientRect();
+          const relX = e.clientX - rect.left;
+          const relY = e.clientY - rect.top;
+          if (fill) {
+            gsap.set(fill, { x: relX, y: relY, scale: 0 });
+            gsap.to(fill, { scale: 2.5, duration: 0.45, ease: "power2.out" });
+          }
+          if (text) {
+            // Pick the inverse colour based on variant
+            const inverseColor = btn.classList.contains("ll-cta--ghost")
+              ? "var(--ll-bg)"
+              : btn.classList.contains("ll-cta--outline")
+              ? "var(--ll-bg)"
+              : "var(--ll-bg)";
+            gsap.to(text, { color: inverseColor, duration: 0.3 });
+          }
+        };
+
+        const onMove = (e: MouseEvent) => {
+          if (reducedMotion) return;
+          const rect = btn.getBoundingClientRect();
+          const x = e.clientX - rect.left - rect.width / 2;
+          const y = e.clientY - rect.top - rect.height / 2;
+          gsap.to(btn, {
+            x: x * 0.18,
+            y: y * 0.18,
+            duration: 0.35,
+            ease: "power2.out",
+          });
+          if (text) {
+            gsap.to(text, {
+              x: x * 0.08,
+              y: y * 0.08,
+              duration: 0.35,
+              ease: "power2.out",
+            });
+          }
+        };
+
+        const onLeave = (e: MouseEvent) => {
+          if (reducedMotion) return;
+          const rect = btn.getBoundingClientRect();
+          const relX = e.clientX - rect.left;
+          const relY = e.clientY - rect.top;
+          if (fill) {
+            gsap.to(fill, {
+              x: relX,
+              y: relY,
+              scale: 0,
+              duration: 0.45,
+              ease: "power2.in",
+            });
+          }
+          if (text) {
+            gsap.to(text, {
+              color: originalColor,
+              x: 0,
+              y: 0,
+              duration: 0.45,
+              ease: "power2.out",
+            });
+          }
+          gsap.to(btn, {
+            x: 0,
+            y: 0,
+            duration: 0.6,
+            ease: "elastic.out(1, 0.35)",
+          });
+        };
+
+        const onPressDown = () => btn.classList.add("is-pressed");
+        const onPressUp = () => btn.classList.remove("is-pressed");
+
+        btn.addEventListener("mouseenter", onEnter);
+        btn.addEventListener("mousemove", onMove);
+        btn.addEventListener("mouseleave", onLeave);
+        btn.addEventListener("pointerdown", onPressDown);
+        btn.addEventListener("pointerup", onPressUp);
+        btn.addEventListener("pointercancel", onPressUp);
+        btn.addEventListener("pointerleave", onPressUp);
+
+        ctaCleanups.push(() => {
+          btn.removeEventListener("mouseenter", onEnter);
+          btn.removeEventListener("mousemove", onMove);
+          btn.removeEventListener("mouseleave", onLeave);
+          btn.removeEventListener("pointerdown", onPressDown);
+          btn.removeEventListener("pointerup", onPressUp);
+          btn.removeEventListener("pointercancel", onPressUp);
+          btn.removeEventListener("pointerleave", onPressUp);
+          shimmerTween?.kill();
+        });
+      });
+
+      // Feature Rows Reveal
+      gsap.utils.toArray(".ll-feat-row").forEach((row: any, i) => {
+        gsap.from(row, {
+          y: 50,
+          opacity: 0,
+          duration: 0.8,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: row,
+            start: "top 85%",
+          },
+        });
+        
+        // Gentle float for the big SVGs
+        const icon = row.querySelector(".ll-feat-icon svg");
+        if (icon) {
+          gsap.to(icon, {
+            y: "-=10",
+            rotation: i % 2 === 0 ? 5 : -5,
+            duration: 3 + i,
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: -1
+          });
+        }
+      });
+    }, containerRef);
+
+    // Refresh ScrollTrigger when fonts load
+    if (document.fonts) {
+      document.fonts.ready.then(() => {
+        ScrollTrigger.refresh();
       });
     }
 
-    setIsPlaying(true);
-  }
-
-  function selectTrack(track: TrackKey) {
-    setActiveTrack(track);
-    if (isPlaying) {
-      startFocusAudio(track);
+    // Use ResizeObserver for bulletproof scrollWidth updates when fonts/images load
+    let ro: ResizeObserver | null = null;
+    if (scrollTrackRef.current) {
+      ro = new ResizeObserver(() => {
+        ScrollTrigger.refresh();
+      });
+      ro.observe(scrollTrackRef.current);
     }
-  }
 
-  function saveLearningPlan() {
-    setPlanStatus("Đã lưu lộ trình");
-    setCompletedTaskIds([]);
-    setPracticeTest([]);
-  }
+    // Refresh on window resize just in case
+    const handleResize = () => ScrollTrigger.refresh();
+    window.addEventListener('resize', handleResize);
 
-  function toggleDay(index: number) {
-    setSelectedDays((current) =>
-      current.includes(index) ? current.filter((day) => day !== index) : [...current, index].sort()
-    );
-  }
-
-  function toggleTask(taskId: string) {
-    setCompletedTaskIds((current) =>
-      current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId]
-    );
-  }
-
-  function createPracticeTest() {
-    setPracticeTest(generatePracticeTest({ goal, level, count: 3 }));
-  }
-
-  function runAiTutorTurn() {
-    setAiTurnsLeft((current) => Math.max(0, current - 1));
-  }
+    return () => {
+      ctx.revert();
+      ctaCleanups.forEach((fn) => fn());
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   return (
-    <main className={`page-shell theme-${themeMode}`}>
-      <header className="topbar macos-header">
-        <div className="window-controls" aria-hidden="true">
-          <span className="control-red" />
-          <span className="control-yellow" />
-          <span className="control-green" />
-        </div>
-        <a className="brand lumalang-wordmark" href="#home" aria-label="LumaLang home">
-          <span className="brand-logo-frame">
-            <img alt="" src="/images/lumalang-logo.png" />
-          </span>
-          <span>Luma<span className="ll-accent">Lang</span><sup>*</sup></span>
-        </a>
-        <nav className="nav-pills" aria-label="Điều hướng chính">
-          <a href="#home">Trang chủ</a>
-          <a href="#path">Phòng học</a>
-          <a href="/pricing">Gói học</a>
-          <a href="/blog">Journal</a>
-          <a href="/contact">Liên hệ</a>
+    <div className="ll-landing relative overflow-hidden" ref={containerRef} style={{ overflowX: 'hidden' }}>
+      {/* 3D Pets Background */}
+      <CubePetsScene />
+
+      {/* Header */}
+      <header className="ll-header relative z-10">
+        <Link href="/" className="ll-brand">
+          <div className="ll-brand-logo">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 0C31.0457 0 40 8.9543 40 20C40 31.0457 31.0457 40 20 40C8.9543 40 0 31.0457 0 20C0 8.9543 8.9543 0 20 0Z" fill="#0ae448"/>
+              <path d="M14 12V28H28" stroke="#0e100f" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          LumaLang
+        </Link>
+        <nav className="ll-nav">
+          <Link href="#features">Tính năng</Link>
+          <Link href="#method">Phương pháp</Link>
+          <Link href="#community">Cộng đồng</Link>
         </nav>
-        <div className="header-actions">
-          <button
-            className="mobile-menu-button"
-            aria-label="Mở menu"
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            <span />
-            <span />
-          </button>
-          <button className="theme-switch" onClick={() => setThemeMode(themeMode === "light" ? "dark" : "light")}>
-            <span className={themeMode === "light" ? "active" : ""}>☀</span>
-            <span className={themeMode === "dark" ? "active" : ""}>☾</span>
-          </button>
-          <a className="ghost-button journey-button" href="/learn">Vào học</a>
-        </div>
-        <nav className={`mobile-nav ${mobileMenuOpen ? "open" : ""}`} aria-label="Điều hướng mobile">
-          <a href="#home" onClick={() => setMobileMenuOpen(false)}>Trang chủ</a>
-          <a href="#path" onClick={() => setMobileMenuOpen(false)}>Phòng học</a>
-          <a href="/pricing" onClick={() => setMobileMenuOpen(false)}>Gói học</a>
-          <a href="/blog" onClick={() => setMobileMenuOpen(false)}>Journal</a>
-          <a href="/contact" onClick={() => setMobileMenuOpen(false)}>Liên hệ</a>
-        </nav>
+        <LandingCta href="/learn" variant="ghost" size="sm">
+          Vào học ngay
+        </LandingCta>
       </header>
 
-      <section className="hero-grid ios-hero" id="home">
-        <div className="hero-copy ios-copy">
-          <div className="mini-window-badge animate-fade-rise" aria-hidden="true">
-            <span className="window-controls">
-              <i className="control-red" />
-              <i className="control-yellow" />
-              <i className="control-green" />
-            </span>
-            <span>study-room.lumalang</span>
-          </div>
-          <p className="eyebrow animate-fade-rise">Học chill, học sâu, không bị dí deadline vô tri</p>
-          <h1 className="animate-fade-rise">
-            Một không gian học ngôn ngữ nhẹ như mở cửa sổ iOS.
-          </h1>
-          <p className="hero-text animate-fade-rise-delay">
-            Lộ trình cá nhân, shadowing, nhóm học và AI tutor được đặt trong một giao diện trong suốt,
-            ít ồn, đủ vui, đủ nghiêm túc để bạn quay lại mỗi ngày.
-          </p>
-          <div className="hero-mood-row animate-fade-rise-delay-2" aria-label="Tinh thần sản phẩm">
-            <span>Focus mode</span>
-            <span>Tree streak</span>
-            <span>Lo-fi học bài</span>
-          </div>
+      {/* Hero Section */}
+      <section className="ll-hero relative z-10">
+        <div className="ll-hero-content" style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
+          
+          <div className="ll-hero-heading-gsap" role="heading" aria-level={1} style={{ display: 'flex', flexDirection: 'column' }}>
+            
+            {/* First Line: "Học" */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div style={{ overflow: 'hidden', paddingBottom: '0.1em', marginBottom: '-0.1em' }}>
+                  <SplitChars text="Học" className="hero-line white" />
+                </div>
+                {/* Sparkle attached specifically to the top right of "Học" */}
+                <SvgSparkle className="hero-shape" style={{ position: 'absolute', top: '-15%', right: '-30%', width: 'clamp(50px, 12vw, 150px)', zIndex: -1 }} />
+              </div>
+            </div>
+            
+            {/* Second Line: "ngôn ngữ." */}
+            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--ll-green)' }}>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                {/* GeoX attached to the left of "ngôn" */}
+                <SvgGeoX className="hero-shape" style={{ position: 'absolute', top: '10%', left: '-15%', width: 'clamp(25px, 6vw, 80px)', zIndex: -1 }} />
+                
+                <div style={{ overflow: 'hidden', paddingBottom: '0.1em', marginBottom: '-0.1em' }}>
+                  <SplitChars text="ngôn ngữ." className="hero-line green" />
+                </div>
+                
+                {/* Squiggle attached specifically to the bottom right of "ngữ." */}
+                <SvgSquiggle className="hero-shape" style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 'clamp(35px, 10vw, 120px)', zIndex: -1 }} />
+              </div>
+            </div>
 
-          <div className="search-card" role="search">
-            <label htmlFor="learning-search">Bạn muốn học gì hôm nay?</label>
-            <div className="search-row">
-              <span className="search-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" role="img">
-                  <path d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" />
-                </svg>
-              </span>
-              <input
-                id="learning-search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Ví dụ: luyện meeting 10 phút, tạo đề TOEIC, shadowing phim..."
-              />
-              <button
-                onClick={() => {
-                  setQuery(query || "Tạo lộ trình học hôm nay");
-                  setPlannerTab("path");
-                }}
+          </div>
+          
+          <div className="ll-hero-bottom hero-fade" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'clamp(3vh, 6vh, 4rem)', flexWrap: 'wrap', gap: '2rem' }}>
+            <div className="ll-hero-desc" style={{ 
+              position: 'relative', 
+              padding: '0.5rem 1.5rem', 
+              maxWidth: '380px',
+              fontSize: '1.1rem',
+              lineHeight: 1.5,
+              opacity: 0.8,
+              fontWeight: 400,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span style={{ fontSize: '2.5rem', fontWeight: 300, color: 'rgba(255,255,255,0.5)' }}>{'{'}</span>
+              <div>
+                Lộ trình cá nhân · AI Tutor · Shadowing qua phim.
+                <br />
+                Học sâu, nhớ lâu, và cực kỳ chill.
+              </div>
+              <span style={{ fontSize: '2.5rem', fontWeight: 300, color: 'rgba(255,255,255,0.5)' }}>{'}'}</span>
+            </div>
+            
+            <div className="ll-hero-cta">
+              <LandingCta
+                href="/learn"
+                variant="outline"
+                size="lg"
+                trailingIcon={
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+                }
               >
-                Gợi ý
-              </button>
-            </div>
-            <div className="quick-chips" aria-label="Gợi ý nhanh">
-              {["Meeting", "IELTS speaking", "Từ vựng", "Shadowing"].map((chip) => (
-                <button key={chip} onClick={() => setQuery(chip)}>
-                  {chip}
-                </button>
-              ))}
+                Học thử miễn phí
+              </LandingCta>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="studio-section" id="path">
-        <div className="studio-intro">
-          <p className="eyebrow">Learning studio</p>
-          <h2>Thiết kế buổi học như set mood cho một căn phòng.</h2>
-          <p>
-            Chọn mục tiêu, thời lượng, âm thanh và không gian. Phần học thuật ở phía sau sẽ bám vào nhịp này,
-            không ném bài tập vào mặt bạn như deadline thứ hai đầu tuần.
-          </p>
-        </div>
-        <aside className="glass-panel planner-panel" aria-label="Thiết kế lộ trình nhanh">
-          <div className="panel-head">
-            <div>
-              <p className="panel-kicker">Thiết kế lộ trình</p>
-              <h2>60 giây để bắt đầu</h2>
+      {/* Horizontal Scroll Text Section */}
+      <section className="ll-scroll-section relative z-10" style={{ overflow: 'hidden' }}>
+        <div className="ll-scroll-wrapper">
+          <div className="ll-scroll-track" ref={scrollTrackRef} style={{ display: 'flex', width: 'fit-content', position: 'relative' }}>
+            
+            {/* Main huge scrolling text */}
+            <div className="ll-scroll-text" style={{ padding: '0 10vw' }}>
+              <span>Học ngôn ngữ</span>
+              
+              {/* Floating Foreign Quote 1 */}
+              <div className="ll-scroll-pill pink absolute" style={{ position: 'absolute', left: '15%', top: '-5%', fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', padding: '0.8em 1.5em', transform: 'rotate(-4deg)' }}>
+                学一门语言，就是多一扇观察世界的窗户。
+              </div>
+
+              <span className="ll-scroll-pill orange">không hề</span>
+              <span>nhàm chán.</span>
+              
+              <SvgDiamond className="ll-scroll-deco-item" style={{ transform: 'rotate(15deg) scale(0.8) translateY(-30%)' }} />
+              
+              {/* Floating Foreign Quote 2 */}
+              <div className="ll-scroll-pill lilac absolute" style={{ position: 'absolute', left: '40%', bottom: '-15%', fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', padding: '0.8em 1.5em', transform: 'rotate(3deg)' }}>
+                To have another language is to possess a second soul.
+              </div>
+
+              <span>Khám phá</span>
+              <span className="ll-scroll-pill green">thế giới mới</span>
+              <span>qua từng từ vựng.</span>
+              
+              <SvgRing className="ll-scroll-deco-item" style={{ transform: 'scale(1.2)' }} />
+              
+              {/* Floating Foreign Quote 3 */}
+              <div className="ll-scroll-pill cyan absolute" style={{ position: 'absolute', left: '65%', top: '-10%', fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', padding: '0.8em 1.5em', transform: 'rotate(-2deg)' }}>
+                新しい言語は新しい人生の始まりである。
+              </div>
+
+              <span>Học bất cứ đâu</span>
+              <span className="ll-scroll-pill pink">mọi lúc</span>
+              <span className="ll-scroll-pill cyan">mọi nơi.</span>
+              
+              <SvgFlower className="ll-scroll-deco-item" style={{ transform: 'rotate(-20deg) scale(0.9) translateY(40%)' }} />
+              
+              {/* Floating Foreign Quote 4 */}
+              <div className="ll-scroll-pill green absolute" style={{ position: 'absolute', left: '85%', bottom: '-10%', fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', padding: '0.8em 1.5em', transform: 'rotate(5deg)' }}>
+                언어는 문화의 거울이다.
+              </div>
+
+              <span>LumaLang is</span>
+              <span className="ll-scroll-pill lilac">Super</span>
+              <span>easy & chill.</span>
             </div>
-            <span className={`status-dot ${selectedGoal.accent}`} />
           </div>
-
-          <div className="inner-tabs" role="tablist" aria-label="Cá nhân hóa học tập">
-            {[
-              ["path", "Lộ trình"],
-              ["sound", "Âm thanh"],
-              ["space", "Không gian"]
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                className={plannerTab === key ? "active" : ""}
-                onClick={() => setPlannerTab(key as PlannerTab)}
-                role="tab"
-                aria-selected={plannerTab === key}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {plannerTab === "path" ? (
-            <>
-              <div className="field-grid">
-                <CustomSelect
-                  id="language"
-                  label="Ngôn ngữ học"
-                  value={language}
-                  options={languages}
-                  isOpen={openSelect === "language"}
-                  onToggle={() => setOpenSelect(openSelect === "language" ? null : "language")}
-                  onChange={(value) => {
-                    setLanguage(value);
-                    setOpenSelect(null);
-                  }}
-                />
-                <CustomSelect
-                  id="level"
-                  label="Trình độ"
-                  value={level}
-                  options={["Mới bắt đầu", "A1", "A2", "B1", "B2", "C1"]}
-                  isOpen={openSelect === "level"}
-                  onToggle={() => setOpenSelect(openSelect === "level" ? null : "level")}
-                  onChange={(value) => {
-                    setLevel(value);
-                    setOpenSelect(null);
-                  }}
-                />
-              </div>
-
-              <div className="goal-tabs" role="tablist" aria-label="Mục tiêu học">
-                {(Object.keys(goals) as GoalKey[]).map((key) => (
-                  <button
-                    key={key}
-                    className={goal === key ? "active" : ""}
-                    onClick={() => setGoal(key)}
-                    role="tab"
-                    aria-selected={goal === key}
-                  >
-                    {goals[key].short}
-                  </button>
-                ))}
-              </div>
-
-              <p className="goal-description">{selectedGoal.description}</p>
-
-              <div className="time-picker" aria-label="Thời gian học mỗi ngày">
-                {timeOptions.map((item) => (
-                  <button key={item} className={time === item ? "active" : ""} onClick={() => setTime(item)}>
-                    {item} phút
-                  </button>
-                ))}
-              </div>
-
-              <button className="primary-button" onClick={saveLearningPlan}>
-                Tạo lộ trình {language}
-              </button>
-              <p className="planner-status">
-                {planStatus} · {pathSteps.length} bước · {selectedDays.length} buổi/tuần
-              </p>
-            </>
-          ) : null}
-
-          {plannerTab === "sound" ? (
-            <div className="sound-studio">
-              <div className="sound-now">
-                <div>
-                  <span>{musicTracks[activeTrack].source === "spotify" ? "Provider mode" : "Đang chọn"}</span>
-                  <strong>{musicTracks[activeTrack].label}</strong>
-                  <p>{musicTracks[activeTrack].description}</p>
-                </div>
-                {musicTracks[activeTrack].source === "spotify" ? (
-                  <button className="connect-button">Kết nối Spotify</button>
-                ) : (
-                  <button
-                    className={isPlaying ? "pause-button" : "play-control"}
-                    onClick={() => (isPlaying ? stopFocusAudio() : startFocusAudio())}
-                  >
-                    {isPlaying ? "Dừng" : "Nghe thử"}
-                  </button>
-                )}
-              </div>
-              <div className="track-list">
-                {(Object.keys(musicTracks) as TrackKey[]).map((track) => (
-                  <button
-                    key={track}
-                    className={activeTrack === track ? "active" : ""}
-                    onClick={() => selectTrack(track)}
-                  >
-                    <strong>{musicTracks[track].label}</strong>
-                    <span>{musicTracks[track].source === "spotify" ? "Spotify - " : "Trong app - "}{musicTracks[track].bestFor}</span>
-                  </button>
-                ))}
-              </div>
-              {musicTracks[activeTrack].source === "generated" ? (
-                <label className="volume-control">
-                  Âm lượng thư giãn
-                  <input
-                    type="range"
-                    min="0"
-                    max="70"
-                    value={volume}
-                    onChange={(event) => setVolume(Number(event.target.value))}
-                  />
-                </label>
-              ) : (
-                <p className="license-note">
-                  Nhạc có lời cần OAuth/provider có bản quyền. Lời bài hát chỉ nên hiển thị qua nguồn licensed, không crawl tự do.
-                </p>
-              )}
-            </div>
-          ) : null}
-
-          {plannerTab === "space" ? (
-            <div className="comfort-grid">
-              <button className="comfort-card active">
-                <strong>Focus mode</strong>
-                <span>Ẩn bảng xếp hạng khi làm bài.</span>
-              </button>
-              <button className="comfort-card">
-                <strong>Gentle review</strong>
-                <span>Nhắc lỗi bằng gợi ý mềm.</span>
-              </button>
-              <button className="comfort-card">
-                <strong>Quiet streak</strong>
-                <span>Giữ streak nhưng không gây áp lực.</span>
-              </button>
-            </div>
-          ) : null}
-        </aside>
-      </section>
-
-      <section className="design-language-section" aria-label="Ngôn ngữ thiết kế LumaLang">
-        <div className="design-language-copy">
-          <p className="eyebrow">Design language</p>
-          <h2>Glass rõ, khoảng thở rộng, học thuật nhưng không căng.</h2>
-        </div>
-        <div className="design-language-grid">
-          {[
-            ["01", "Full-width mood", "Trang chủ mở rộng như một khung cảnh, không đóng hộp hero vào card."],
-            ["02", "iOS glass", "Khối chức năng trong suốt, blur vừa đủ, viền nhẹ và shadow mềm."],
-            ["03", "Green calm", "Bảng màu xanh học thuật, sáng sạch; dark mode là dark green đúng nghĩa."],
-            ["04", "Useful whimsy", "Gen Z một chút ở câu chữ, nhưng chức năng vẫn rõ và dùng được mỗi ngày."]
-          ].map(([index, title, body]) => (
-            <article className="glass-panel design-card" key={title}>
-              <span>{index}</span>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </article>
-          ))}
         </div>
       </section>
 
-      <section className="dashboard-grid" id="learning-flow">
-        <article className="glass-panel path-panel">
-          <div className="section-title">
-            <p>Lộ trình cá nhân</p>
-            <h2>{selectedGoal.label}</h2>
-          </div>
-          <div className="progress-strip">
-            <span style={{ width: `${completionPercent}%` }} />
-          </div>
-          <div className="path-list">
-            {pathSteps.map((step, index) => (
-              <div className="path-step" key={step.id}>
-                <span>{index + 1}</span>
-                <div>
-                  <strong>{step.title}</strong>
-                  <p>{step.detail} · {step.minutes} phút</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="glass-panel today-panel">
-          <div className="section-title">
-            <p>Hôm nay</p>
-            <h2>{time} phút học tập</h2>
-          </div>
-          <ul className="today-list">
-            {todayTasks.map((task) => (
-              <li key={task.id} className={completedTaskIds.includes(task.id) ? "done" : ""}>
-                <button aria-label={`Đánh dấu ${task.title}`} onClick={() => toggleTask(task.id)}>
-                  <span />
-                </button>
-                <div>
-                  <strong>{task.title}</strong>
-                  <span className="ll-accent">{task.detail} · {task.minutes} phút</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="schedule-strip">
-            {days.map((day, index) => (
-              <button className={selectedDays.includes(index) ? "selected" : ""} key={day} onClick={() => toggleDay(index)}>
-                {day}
-              </button>
-            ))}
-          </div>
-          <p className="muted">
-            Hoàn thành hôm nay: {completionPercent}%. Tải học mỗi tuần: khoảng {weeklyLoad} phút.
-          </p>
-        </article>
-
-        <article className="glass-panel ai-cost-panel">
-          <div className="section-title">
-            <p>AI tutor</p>
-            <h2>Không đốt token vô thức</h2>
-          </div>
-          <div className="meter">
-            <span style={{ width: `${(aiTurnsLeft / 4) * 100}%` }} />
-          </div>
-          <p>
-            Free plan còn {aiTurnsLeft}/4 lượt AI hôm nay. Roleplay dài, voice AI nâng cao và tạo lesson riêng
-            thuộc gói trả phí.
-          </p>
-          <button className="secondary-button" disabled={aiTurnsLeft === 0} onClick={runAiTutorTurn}>
-            Dùng 1 lượt AI tutor
-          </button>
-        </article>
-
-        <article className="glass-panel tree-panel" id="knowledge-tree">
-          <div className="tree-copy">
-            <div className="section-title">
-              <p>Thay cho streak</p>
-              <h2>Cây tri thức của bạn</h2>
-            </div>
-            <p>
-              Không ép người học giữ streak khô cứng. Mỗi task hoàn thành, lịch học đều đặn và shadowing sẽ làm cây lớn hơn,
-              mở khóa nhánh theo kỹ năng.
+      {/* Intro Section */}
+      <section className="ll-intro relative z-10" id="method" style={{ padding: '15vh 0' }}>
+        <div className="ll-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 clamp(1.5rem, 6.7vw, 8rem)' }}>
+          <div className="ll-intro-inner">
+            <h2 className="ll-intro-heading" style={{ maxWidth: '80rem', fontSize: 'clamp(3rem, 6vw, 6rem)', lineHeight: 1.15, letterSpacing: '-0.03em' }}>
+              <SplitWordsGSAP text="Ngôn ngữ không phải là môn học" />
+              {' '}
+              <SplitWordsGSAP text="nó là cánh cửa thế giới." fillColor="var(--ll-green)" />
+            </h2>
+            <p className="ll-intro-text" style={{ marginTop: '3rem', maxWidth: '50rem', fontSize: 'clamp(1.25rem, 2vw, 2rem)' }}>
+              <SplitWords text="LumaLang được tạo ra để bạn đắm chìm vào ngôn ngữ theo cách tự nhiên nhất. Không áp lực, không deadline vô tri, chỉ có sự tò mò dẫn lối và một người bạn đồng hành luôn thấu hiểu nhịp độ của riêng bạn." />
             </p>
-            <div className="tree-stats">
-              <span>{completedToday}/{todayTasks.length} task hôm nay</span>
-              <span>{selectedDays.length} buổi/tuần</span>
-              <span>Level {Math.max(1, completedToday + 1)}</span>
-            </div>
           </div>
-          <div className="knowledge-tree" aria-label="Cây tri thức mô phỏng">
-            <KnowledgeTreeAsset growth={treeLeaves} />
-          </div>
-        </article>
-      </section>
-
-      <section className="feature-grid">
-        <article className="glass-panel group-panel" id="group">
-          <div className="section-title">
-            <p>Học cùng người khác</p>
-            <h2>Kết nối bạn học phù hợp</h2>
-          </div>
-          <div className="buddy-card">
-            <div className="avatar-stack" aria-hidden="true">
-              <span>A</span>
-              <span>M</span>
-              <span>K</span>
-            </div>
-            <div>
-              <strong>Nhóm {selectedGoal.short} buổi tối</strong>
-              <p>Cùng level {level}, học {time} phút, timezone Việt Nam.</p>
-            </div>
-          </div>
-          <button className={connected ? "success-button" : "secondary-button"} onClick={() => setConnected(!connected)}>
-            {connected ? "Đã gửi lời mời" : "Kết nối nhóm học"}
-          </button>
-        </article>
-
-        <article className="glass-panel rank-panel">
-          <div className="section-title">
-            <p>Thứ hạng</p>
-            <h2>Bảng tuần này</h2>
-          </div>
-          {["Bạn", "Minh Anh", "Khoa", "Linh"].map((name, index) => (
-            <div className="rank-row" key={name}>
-              <span>{index + 1}</span>
-              <strong>{name}</strong>
-              <span className="ll-accent">{1240 - index * 95} điểm đều đặn</span>
-            </div>
-          ))}
-        </article>
-
-        <article className="glass-panel shadowing-panel" id="shadowing">
-          <div className="section-title">
-            <p>Kho phim shadowing</p>
-            <h2>{selectedClip.title}</h2>
-          </div>
-          <div className="language-switch" role="tablist" aria-label="Ngôn ngữ shadowing">
-            {(Object.keys(shadowLanguages) as ShadowLanguage[]).map((item) => (
-              <button
-                key={item}
-                className={shadowLanguage === item ? "active" : ""}
-                onClick={() => {
-                  setShadowLanguage(item);
-                  setSelectedClipIndex(0);
-                }}
-                role="tab"
-                aria-selected={shadowLanguage === item}
-              >
-                {shadowLanguages[item]}
-              </button>
-            ))}
-          </div>
-          <div className="media-frame">
-            <div className="play-button" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7L8 5Z" />
-              </svg>
-            </div>
-            <p>{selectedGoal.shadowing}. Loop từng câu, subtitle song ngữ, lưu từ mới, so sánh transcript bằng Web Speech API.</p>
-          </div>
-          <div className="caption-line">
-            <span>{selectedClip.duration}</span>
-            <strong>"{selectedClip.line}"</strong>
-          </div>
-          <div className="shadow-list">
-            {shadowCatalog[shadowLanguage].map((clip, index) => (
-              <button
-                key={clip.title}
-                className={selectedClipIndex === index ? "active" : ""}
-                onClick={() => setSelectedClipIndex(index)}
-              >
-                <span>{clip.level}</span>
-                <strong>{clip.title}</strong>
-                <span className="ll-accent">{clip.source} · {clip.focus}</span>
-              </button>
-            ))}
-          </div>
-        </article>
-
-        <article className="glass-panel test-panel" id="tests">
-          <div className="test-copy">
-            <div className="section-title">
-              <p>Tạo đề ngẫu nhiên</p>
-              <h2>An toàn bằng question bank</h2>
-            </div>
-            <p>{selectedGoal.testMode}</p>
-            <div className="blueprint">
-              <span>Blueprint</span>
-              <strong>Level {level}</strong>
-              <strong>{language}</strong>
-              <strong>{selectedGoal.short}</strong>
-            </div>
-            <button className="secondary-button" onClick={createPracticeTest}>Tạo đề mẫu</button>
-          </div>
-          <div className="test-preview">
-            {practiceTest.length > 0 ? (
-              <div className="question-preview">
-                {practiceTest.map((question) => (
-                  <details key={question.id}>
-                    <summary>{question.skill}: {question.prompt}</summary>
-                    <p><strong>Đáp án:</strong> {question.answer}</p>
-                    <p>{question.explanation}</p>
-                  </details>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-test-state">
-                <strong>Chưa có đề mẫu</strong>
-                <span>Bấm tạo đề để lấy 3 câu hỏi đã kiểm duyệt theo mục tiêu hiện tại.</span>
-              </div>
-            )}
-          </div>
-        </article>
-      </section>
-
-      <footer className="site-footer">
-        <div>
-          <a className="brand footer-brand" href="#home" aria-label="LumaLang home">
-            <span className="brand-logo-frame compact">
-              <img alt="" src="/images/lumalang-logo.png" />
-            </span>
-            <span>LumaLang</span>
-          </a>
-          <p>Nền tảng học ngôn ngữ cá nhân hóa: lộ trình, lịch học, shadowing, nhóm học và AI tutor có kiểm soát chi phí.</p>
         </div>
-        <nav aria-label="Footer">
-          <a href="#path">Lộ trình</a>
-          <a href="#group">Cộng đồng</a>
-          <a href="#shadowing">Shadowing</a>
-          <a href="#tests">Đề luyện</a>
-        </nav>
-        <div className="footer-note">
-          <strong>MVP focus</strong>
-          <span>Test nhanh với user, chưa dùng AI sinh đề trực tiếp.</span>
+      </section>
+
+      {/* Features Section */}
+      <section className="ll-features relative z-10" id="features">
+        <div className="ll-container">
+          <div className="ll-section-label">Công cụ cốt lõi</div>
+          
+          <div className="ll-feat-row">
+            <div className="ll-feat-icon" style={{ width: 'clamp(8rem, 20vw, 20rem)' }}>
+              <SvgGradientU />
+            </div>
+            <div className="ll-feat-info">
+              <h4>Lộ trình cá nhân</h4>
+              <p>Chọn mục tiêu, thời lượng và phong cách học. Hệ thống tự động thiết kế các bài luyện tập bám sát nhịp độ của riêng bạn.</p>
+            </div>
+            <div className="ll-feat-action">
+              <LandingCta href="/learn" variant="ghost" size="md">
+                Khám phá Lộ trình
+              </LandingCta>
+            </div>
+          </div>
+
+          <div className="ll-feat-row">
+            <div className="ll-feat-icon" style={{ width: 'clamp(8rem, 20vw, 20rem)' }}>
+              <SvgGradientSquare />
+            </div>
+            <div className="ll-feat-info">
+              <h4>Shadowing qua phim</h4>
+              <p>Thực hành phát âm chuẩn bản xứ qua kho tàng video, podcast và phim ảnh thực tế được đồng bộ phụ đề thông minh.</p>
+            </div>
+            <div className="ll-feat-action">
+              <LandingCta href="/learn" variant="ghost" size="md">
+                Khám phá Shadowing
+              </LandingCta>
+            </div>
+          </div>
+
+          <div className="ll-feat-row">
+            <div className="ll-feat-icon" style={{ width: 'clamp(8rem, 20vw, 20rem)' }}>
+              <SvgGradientStar />
+            </div>
+            <div className="ll-feat-info">
+              <h4>AI Tutor Thông Minh</h4>
+              <p>Mắc kẹt? AI Tutor luôn sẵn sàng giải thích ngữ pháp, từ vựng và chấm điểm phát âm ngay trong ngữ cảnh bài học.</p>
+            </div>
+            <div className="ll-feat-action">
+              <LandingCta href="/learn" variant="ghost" size="md">
+                Khám phá AI Tutor
+              </LandingCta>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="ll-cta-final relative z-10" id="community">
+        <h2>
+          Sẵn sàng <br/>
+          <span className="ll-pill ll-pill--green ll-pill--xl" style={{ marginTop: '1rem', display: 'inline-block' }}>bắt đầu</span> chưa?
+        </h2>
+        <LandingCta href="/learn" variant="primary" size="lg">
+          Vào học ngay
+        </LandingCta>
+        <p className="ll-sub">Chỉ mất 60 giây, không cần thẻ tín dụng.</p>
+      </section>
+
+      {/* Footer */}
+      <footer className="ll-footer relative z-10">
+        <div className="ll-footer-inner">
+          <div>
+            <div className="ll-brand">LumaLang</div>
+            <p>Học ngôn ngữ theo phong cách chill nhất. Thiết kế bởi trái tim yêu ngôn ngữ.</p>
+          </div>
+          <nav>
+            <Link href="#">Trang chủ</Link>
+            <Link href="/learn">Dashboard</Link>
+            <Link href="#">Về chúng tôi</Link>
+            <Link href="#">Điều khoản</Link>
+          </nav>
         </div>
       </footer>
-    </main>
-  );
-}
-
-function KnowledgeTreeAsset({ growth }: { growth: number }) {
-  return <KnowledgeTreeScene growth={growth} />;
-}
-
-function CustomSelect({
-  id,
-  label,
-  value,
-  options,
-  isOpen,
-  onToggle,
-  onChange
-}: {
-  id: Exclude<SelectId, null>;
-  label: string;
-  value: string;
-  options: string[];
-  isOpen: boolean;
-  onToggle: () => void;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="custom-field">
-      <span>{label}</span>
-      <div className="custom-select">
-        <button
-          type="button"
-          id={`${id}-select`}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          onClick={onToggle}
-        >
-          {value}
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </button>
-        {isOpen ? (
-          <div className="select-menu" role="listbox" aria-labelledby={`${id}-select`}>
-            {options.map((option) => (
-              <button
-                type="button"
-                key={option}
-                className={option === value ? "selected" : ""}
-                role="option"
-                aria-selected={option === value}
-                onClick={() => onChange(option)}
-              >
-                {option}
-                {option === value ? <span aria-hidden="true">✓</span> : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
     </div>
   );
 }
