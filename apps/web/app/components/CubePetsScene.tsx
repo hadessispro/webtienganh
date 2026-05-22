@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment, Float, OrthographicCamera, Clone, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -20,14 +20,15 @@ useGLTF.preload("/models/lion.glb");
 
 function PetModel({ url, initialPosition, scale, floatSpeed = 1, floatIntensity = 1, portal }: any) {
   const gltf = useGLTF(url) as any;
-  
+
   const translationGroupRef = useRef<THREE.Group>(null);
   const rotationGroupRef = useRef<THREE.Group>(null);
   const positionRef = useRef(new THREE.Vector3(initialPosition[0], initialPosition[1], initialPosition[2]));
-  
-  const [bubbleText, setBubbleText] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-  
+
+  // Speech bubble state kept around even though no click triggers it
+  // anymore — pets are decoration only now. See note below.
+  const [bubbleText] = useState("");
+
   // Random velocity for wandering
   const velocity = useRef(
     new THREE.Vector2(
@@ -36,78 +37,39 @@ function PetModel({ url, initialPosition, scale, floatSpeed = 1, floatIntensity 
     )
   );
 
-  const handleClick = (e: any) => {
-    e.stopPropagation();
-    const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-    setBubbleText(randomQuote);
-    
-    // Add a little bounce on click
-    if (rotationGroupRef.current) {
-      rotationGroupRef.current.scale.set(scale * 1.3, scale * 0.7, scale * 1.3);
-      setTimeout(() => {
-        if (rotationGroupRef.current) rotationGroupRef.current.scale.set(scale, scale, scale);
-      }, 150);
-    }
-  };
+  // The previous version had onClick / onPointerDown / onPointerUp on
+  // the mesh to make pets clickable (showed a speech bubble + bounce).
+  // We removed those because they required `eventSource=document.body`
+  // which globally intercepted clicks and blocked the page CTAs. Pets
+  // are now decoration only.
 
-  const handlePointerDown = (e: any) => {
-    e.stopPropagation();
-    if (e.target.setPointerCapture) {
-      e.target.setPointerCapture(e.pointerId);
-    }
-    setIsDragging(true);
-  };
-
-  const handlePointerUp = (e: any) => {
-    e.stopPropagation();
-    if (e.target.releasePointerCapture) {
-      e.target.releasePointerCapture(e.pointerId);
-    }
-    setIsDragging(false);
-  };
-
-  // Hide bubble after 3 seconds
-  useEffect(() => {
-    if (bubbleText) {
-      const timer = setTimeout(() => setBubbleText(""), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [bubbleText]);
-
-  // Wandering, Dragging & Bouncing logic
+  // Wandering & bouncing logic (dragging removed along with the
+  // click handlers — see note about pointer events at the top).
   useFrame((state, delta) => {
-    const { viewport, pointer } = state;
+    const { viewport } = state;
 
-    if (isDragging) {
-      // Drag follow mouse
-      positionRef.current.x = pointer.x * viewport.width / 2;
-      positionRef.current.y = pointer.y * viewport.height / 2;
-      // Reset velocity so it doesn't fly away fast when released
-      velocity.current.set((Math.random() - 0.5) * 0.03, (Math.random() - 0.5) * 0.03);
-    } else {
-      // Wandering
-      positionRef.current.x += velocity.current.x * (delta * 60);
-      positionRef.current.y += velocity.current.y * (delta * 60);
+    // Wandering
+    positionRef.current.x += velocity.current.x * (delta * 60);
+    positionRef.current.y += velocity.current.y * (delta * 60);
 
-      // Bounce off screen edges (with some padding)
-      const paddingX = 2;
-      const paddingY = 2;
-      
-      if (positionRef.current.x > viewport.width / 2 - paddingX) {
-        positionRef.current.x = viewport.width / 2 - paddingX;
-        velocity.current.x *= -1;
-      } else if (positionRef.current.x < -viewport.width / 2 + paddingX) {
-        positionRef.current.x = -viewport.width / 2 + paddingX;
-        velocity.current.x *= -1;
-      }
-      
-      if (positionRef.current.y > viewport.height / 2 - paddingY) {
-        positionRef.current.y = viewport.height / 2 - paddingY;
-        velocity.current.y *= -1;
-      } else if (positionRef.current.y < -viewport.height / 2 + paddingY) {
-        positionRef.current.y = -viewport.height / 2 + paddingY;
-        velocity.current.y *= -1;
-      }
+    // Bounce off screen edges (with some padding)
+    const paddingX = 2;
+    const paddingY = 2;
+
+    if (positionRef.current.x > viewport.width / 2 - paddingX) {
+      positionRef.current.x = viewport.width / 2 - paddingX;
+      velocity.current.x *= -1;
+    } else if (positionRef.current.x < -viewport.width / 2 + paddingX) {
+      positionRef.current.x = -viewport.width / 2 + paddingX;
+      velocity.current.x *= -1;
+    }
+
+    if (positionRef.current.y > viewport.height / 2 - paddingY) {
+      positionRef.current.y = viewport.height / 2 - paddingY;
+      velocity.current.y *= -1;
+    } else if (positionRef.current.y < -viewport.height / 2 + paddingY) {
+      positionRef.current.y = -viewport.height / 2 + paddingY;
+      velocity.current.y *= -1;
     }
 
     // Apply translation
@@ -118,11 +80,15 @@ function PetModel({ url, initialPosition, scale, floatSpeed = 1, floatIntensity 
     // Apply rotation (independent of Html bubble)
     if (rotationGroupRef.current) {
       rotationGroupRef.current.rotation.y += delta * 0.15;
-      
-      // Mouse interaction parallax (eyes follow mouse slightly)
-      const targetX = (state.pointer.x * 2);
-      const targetY = (state.pointer.y * 2);
-      
+
+      // Mouse interaction parallax (eyes follow mouse slightly).
+      // state.pointer is normalized -1..1 across the Canvas viewport.
+      // Since the Canvas has pointer-events:none, R3F still tracks
+      // mouse position through its raw pointer state, so this still
+      // works as a passive effect.
+      const targetX = state.pointer.x * 2;
+      const targetY = state.pointer.y * 2;
+
       rotationGroupRef.current.rotation.x = THREE.MathUtils.lerp(rotationGroupRef.current.rotation.x, targetY * 0.2, 0.05);
       rotationGroupRef.current.rotation.z = THREE.MathUtils.lerp(rotationGroupRef.current.rotation.z, -targetX * 0.2, 0.05);
     }
@@ -132,16 +98,10 @@ function PetModel({ url, initialPosition, scale, floatSpeed = 1, floatIntensity 
     <group ref={translationGroupRef}>
       <Float speed={floatSpeed} rotationIntensity={0.6} floatIntensity={floatIntensity} floatingRange={[-0.5, 0.5]}>
         
-        {/* Rotation Group (only affects the mesh, NOT the speech bubble) */}
-        <group 
-          ref={rotationGroupRef} 
-          scale={scale} 
-          onClick={handleClick} 
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerOver={() => document.body.style.cursor = isDragging ? 'grabbing' : 'pointer'} 
-          onPointerOut={() => document.body.style.cursor = 'auto'}
-        >
+        {/* Rotation Group (only affects the mesh, NOT the speech bubble).
+            No pointer handlers — pets are decoration only. See note at
+            the top of PetModel about why. */}
+        <group ref={rotationGroupRef} scale={scale}>
           <Clone object={gltf.scene} castShadow receiveShadow />
         </group>
         
@@ -184,25 +144,66 @@ function PetModel({ url, initialPosition, scale, floatSpeed = 1, floatIntensity 
 }
 
 export default function CubePetsScene() {
-  const [eventSource, setEventSource] = useState<HTMLElement | null>(null);
   const portalRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Bind R3F events to the body so we can click through the pointer-events-none container
-    setEventSource(document.body);
-  }, []);
-
-  if (!eventSource) return null;
+  // IMPORTANT (2026-05-23 fix):
+  // Previous version did `setEventSource(document.body)` so that R3F
+  // would bind pointer listeners on <body>, which let users click the
+  // 3D pets through the fixed-positioned wrapper. The huge side effect:
+  // R3F intercepted ALL clicks on the entire page first to run its
+  // raycasting against the 3D scene, which made the landing-page CTAs
+  // unresponsive (clicks were eaten before Next.js Link could handle
+  // them).
+  //
+  // Trade-off chosen: lose pet interactivity (no more click→speech
+  // bubble), keep all the visual goodies (wandering, floating,
+  // mouse-parallax). The pets are decoration; CTAs need to work.
+  //
+  // Implementation: don't override eventSource at all. The Canvas
+  // wrapper has pointer-events: none AND we put `style={{
+  // pointerEvents: 'none' }}` on Canvas itself, so the Canvas DOM
+  // element never catches events. Pets are now purely visual.
 
   return (
     <>
-      {/* Explicit portal container for Html bubbles to ensure they stay fixed to screen */}
-      <div ref={portalRef} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 100 }} />
-      
-      <div className="pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 50, overflow: 'hidden' }}>
-        <Canvas shadows eventSource={eventSource || undefined} eventPrefix="client" style={{ pointerEvents: 'none' }}>
+      {/* Portal for Html bubbles. Bubbles will still mount but stay
+          hidden because nothing triggers them anymore. Kept around
+          for visual consistency / future re-enable. */}
+      <div
+        ref={portalRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          pointerEvents: "none",
+          zIndex: 100,
+        }}
+      />
+
+      <div
+        className="pointer-events-none"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 1, // Behind everything interactive — was z-index: 50
+          overflow: "hidden",
+          pointerEvents: "none",
+        }}
+      >
+        <Canvas
+          shadows
+          // No eventSource override — R3F uses the Canvas element
+          // itself, and since Canvas has pointer-events: none, no
+          // events reach it. This is what we want.
+          style={{ pointerEvents: "none" }}
+        >
           <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={80} />
-          
+
           <ambientLight intensity={0.6} color="#ffffff" />
           <directionalLight
             castShadow
@@ -212,12 +213,12 @@ export default function CubePetsScene() {
             shadow-mapSize={[1024, 1024]}
           />
           <directionalLight position={[-10, -10, -10]} intensity={0.4} color="#a1a1aa" />
-          
+
           <PetModel url="/models/cat.glb" initialPosition={[-4, 2, 0]} scale={0.6} portal={portalRef} />
           <PetModel url="/models/dog.glb" initialPosition={[4, -2, 0]} scale={0.6} floatSpeed={1.2} portal={portalRef} />
           <PetModel url="/models/penguin.glb" initialPosition={[-3, -3, 0]} scale={0.6} floatSpeed={0.8} portal={portalRef} />
           <PetModel url="/models/lion.glb" initialPosition={[3, 3, 0]} scale={0.6} floatSpeed={1.5} portal={portalRef} />
-          
+
           <Environment preset="city" />
         </Canvas>
       </div>
