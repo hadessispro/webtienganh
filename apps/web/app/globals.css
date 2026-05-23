@@ -7251,6 +7251,7 @@ button {
 .ll-page {
   display: grid;
   gap: 14px;
+  grid-auto-rows: max-content;
 }
 
 .ll-topbar {
@@ -12497,6 +12498,7 @@ button {
   gap: 12px;
   margin-bottom: 12px;
   padding: 18px 22px;
+  min-height: max-content;
 }
 
 .ll-dashboard .ll-flashcard-result h2 {

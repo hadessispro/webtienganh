@@ -432,7 +432,7 @@
   padding: clamp(4rem, 8vw, 8rem) 0;
 }
 
-.ll-section-label {
+.ll-landing .ll-section-label {
   font-size: clamp(0.8125rem, 0.9vw, 1rem);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -444,7 +444,7 @@
   gap: 0.75rem;
 }
 
-.ll-section-label::before {
+.ll-landing .ll-section-label::before {
   content: '';
   display: inline-block;
   width: 0.375rem;
