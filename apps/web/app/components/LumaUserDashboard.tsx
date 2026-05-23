@@ -2154,26 +2154,24 @@ export function LumaUserDashboard() {
 
         <div>
           <div className="ll-section-label">Khóa đang học</div>
-          <div className="ll-ctx-group">
-            {enrolledCourses.length ? (
-              enrolledCourses.map((course) => (
-                <button
-                  className={selectedCourseId === course.id ? "ll-ctx-card active" : "ll-ctx-card"}
-                  key={course.id}
-                  onClick={() => {
-                    setSelectedCourseId(course.id);
-                    setActiveView("courses");
-                  }}
-                  type="button"
-                >
-                  <span className="ll-ctx-card-title">{course.title}</span>
-                  <span className="ll-ctx-card-meta">{course.language} · {course.level} · {course.lessons} bài</span>
-                </button>
-              ))
-            ) : (
-              <div className="ll-ctx-card">Chưa ghi danh khóa nào.</div>
-            )}
-          </div>
+          {enrolledCourses.length ? (
+            enrolledCourses.map((course) => (
+              <button
+                className={selectedCourseId === course.id ? "ll-ctx-card active" : "ll-ctx-card"}
+                key={course.id}
+                onClick={() => {
+                  setSelectedCourseId(course.id);
+                  setActiveView("courses");
+                }}
+                type="button"
+              >
+                <span className="ll-ctx-card-title">{course.title}</span>
+                <span className="ll-ctx-card-meta">{course.language} · {course.level} · {course.lessons} bài</span>
+              </button>
+            ))
+          ) : (
+            <div className="ll-ctx-card">Chưa ghi danh khóa nào.</div>
+          )}
         </div>
 
         <div>

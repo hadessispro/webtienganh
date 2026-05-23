@@ -11359,12 +11359,6 @@ button {
   letter-spacing: 0.14em;
 }
 
-.ll-ctx-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .ll-ctx-card {
   border-radius: 16px;
 }
