@@ -54,20 +54,52 @@ useGLTF.preload("/models/lion.glb");
  * IMPORTANT: We do NOT raycast against `scene.children` (which would
  * also hit the Environment cubemap and force pointer-events:auto
  * everywhere). We only raycast against descendants of groups that
- * marked themselves with `userData.pet = true`. PetModel registers
- * its root group via the `registerHoverable` callback below.
+ * marked themselves with `userData.pet = true`.
+ *
+ * CRITICAL gotcha discovered during debugging: R3F's `mouse` from
+ * useThree() only updates when the Canvas DOM element actually
+ * receives pointer events. Since our wrapper has pointer-events:
+ * none (so CTAs work), pointermove never reaches the Canvas, so
+ * R3F's mouse stays stuck at (0,0) and raycasts never hit anything.
+ *
+ * Workaround: install a document-level pointermove listener that
+ * computes normalized device coords ourselves and stores them in a
+ * ref. The frame loop reads from the ref instead of R3F's mouse.
  */
 function HoverGate({ wrapperEl }: { wrapperEl: HTMLDivElement | null }) {
-  const { scene, raycaster, mouse, camera } = useThree();
+  const { scene, raycaster, camera, gl } = useThree();
   const lastStateRef = useRef<"on" | "off">("off");
   const targetsRef = useRef<THREE.Object3D[]>([]);
   const tickRef = useRef(0);
+  // Our own mouse-position tracker; bypasses R3F's `mouse` which is
+  // frozen when Canvas pointer-events: none.
+  const ndcRef = useRef(new THREE.Vector2(-2, -2)); // start off-screen
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      // Normalized device coords against the Canvas element's
+      // bounding rect (not the window — the Canvas might be sized
+      // and positioned differently).
+      const rect = gl.domElement.getBoundingClientRect();
+      ndcRef.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndcRef.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    };
+    const onLeave = () => {
+      ndcRef.current.set(-2, -2); // pull mouse off-screen on leave
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerleave", onLeave);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerleave", onLeave);
+    };
+  }, [gl]);
 
   useFrame(() => {
     if (!wrapperEl) return;
 
-    // Refresh the targets list every ~30 frames (twice a second at
-    // 60fps). Cheap enough, picks up new pets if any are added later.
+    // Refresh the targets list every ~30 frames (~twice a second
+    // at 60fps). Cheap enough to pick up newly mounted pets.
     tickRef.current++;
     if (tickRef.current % 30 === 0 || targetsRef.current.length === 0) {
       const t: THREE.Object3D[] = [];
@@ -78,7 +110,7 @@ function HoverGate({ wrapperEl }: { wrapperEl: HTMLDivElement | null }) {
     }
     if (targetsRef.current.length === 0) return;
 
-    raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(ndcRef.current, camera);
     const hits = raycaster.intersectObjects(targetsRef.current, true);
     const onPet = hits.length > 0;
 
