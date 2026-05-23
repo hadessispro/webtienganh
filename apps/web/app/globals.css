@@ -6565,7 +6565,7 @@ button {
   z-index: 1;
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 84px 268px minmax(0, 1fr);
+  grid-template-columns: 84px minmax(0, 1fr) 268px;
   gap: 12px;
   padding: 12px;
   color: var(--ll-ink-900);
@@ -10548,7 +10548,7 @@ button {
   display: grid;
   width: 100%;
   min-height: 100vh;
-  grid-template-columns: 84px 268px minmax(0, 1fr);
+  grid-template-columns: 84px minmax(0, 1fr) 268px;
   gap: 12px;
   margin: 0;
   padding: 12px;
@@ -11301,7 +11301,7 @@ button {
 
 .ll-dashboard {
   gap: 12px;
-  grid-template-columns: 84px 268px minmax(0, 1fr);
+  grid-template-columns: 84px minmax(0, 1fr) 268px;
   padding: 12px;
 }
 
