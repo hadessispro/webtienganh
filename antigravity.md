@@ -366,3 +366,15 @@ Avoid the pattern of `LumaUserDashboard.tsx` going forward (one giant component,
 ---
 
 If this doc gets stale, update the **Last update** line at the top and bump anything that's drifted. The repo's truth is the code; this is the map to the code.
+
+---
+
+## Recent Layout Fixes (2026-05-24)
+
+These changes have been pushed to `main` and should be reviewed by Claude:
+
+1. **Flashcard Result Overlap Bug**: Fixed an issue where the `.ll-flashcard-result` component was being cut off horizontally and overlapped by `.ll-flashcard-lobby-grid` when completing a session. The root cause was `.ll-page` having a `display: grid` with no `grid-auto-rows`, causing grid items to shrink under the fixed `100vh` viewport constraint. 
+   - **Fix**: Added `grid-auto-rows: max-content;` to `.ll-page` and `min-height: max-content;` to `.ll-dashboard .ll-flashcard-result` in `globals.css` so the grid items maintain their height and correctly trigger scrolling.
+
+2. **Learn Page Sidebar UI Bug**: Fixed the spacing and layout inconsistencies for the sidebar cards (e.g. "Khóa đang học").
+   - **Fix**: Scoped `.ll-section-label` in `landing.css` to `.ll-landing` to avoid global margin bleeds into the main dashboard, which fixed the sidebar spacing issue without needing extra wrapper elements.
