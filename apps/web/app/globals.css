@@ -12883,6 +12883,7 @@ button {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
+  padding: 0;
 }
 
 .ll-dashboard {
