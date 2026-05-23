@@ -401,6 +401,19 @@
   max-width: 46rem;
 }
 
+/* ── GSAP Scrub Elements — prevent CSS transitions from fighting GSAP ── */
+.ll-landing .scrub-word-stroke {
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(255,255,255,0.25);
+  transition: none;
+  will-change: color, -webkit-text-stroke-color, transform, filter;
+}
+
+.ll-landing .scrub-word {
+  transition: none;
+  will-change: opacity, transform, filter;
+}
+
 .ll-intro-flair {
   position: absolute;
   right: 0;

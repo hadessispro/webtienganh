@@ -144,8 +144,6 @@ export default function HomePlan2() {
       {text.split(' ').map((word, i, arr) => (
         <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre' }}>
           <span className="scrub-word-stroke" data-fill={fillColor} style={{ 
-            WebkitTextStroke: '2px rgba(255,255,255,0.2)', 
-            color: 'transparent',
             display: 'inline-block'
           }}>
             {word}
@@ -195,35 +193,72 @@ export default function HomePlan2() {
       });
 
       // Intro Section Scrub Animation (Word by Word)
-      // First, handle the normal opacity scrub for regular intro text
+      // Entrance: the whole intro-inner slides up and fades in
+      gsap.from(".ll-intro-inner", {
+        y: 80,
+        opacity: 0,
+        duration: 1.4,
+        ease: "power3.out",
+        scrollTrigger: {
+          trigger: ".ll-intro",
+          start: "top 90%",
+        }
+      });
+
+      // Paragraph text: each word starts dim, blurred, slightly below —
+      // then sharpens and rises into place as the user scrolls.
       gsap.fromTo(".scrub-word", 
-        { opacity: 0.2 },
+        { opacity: 0.12, y: 12, filter: 'blur(3px)' },
         {
           opacity: 1,
+          y: 0,
+          filter: 'blur(0px)',
           stagger: 0.05,
           ease: "none",
           scrollTrigger: {
             trigger: ".ll-intro-text",
-            start: "top 85%",
-            end: "center center",
+            start: "top 90%",
+            end: "bottom 55%",
             scrub: true,
           }
         }
       );
 
-      // Next, handle the massive GSAP-style Stroke-to-Fill effect for the main heading
-      gsap.to(".scrub-word-stroke", {
-        color: (i, el) => el.dataset.fill,
-        WebkitTextStrokeColor: "transparent",
-        stagger: 0.1,
-        ease: "none",
-        scrollTrigger: {
-          trigger: ".ll-intro",
-          start: "top 80%",
-          end: "center center",
-          scrub: true,
+      // Massive GSAP Stroke-to-Fill effect for the main heading.
+      // Words start as faint outlined strokes, then fill in with
+      // color + glow + slight scale-up as the user scrolls.
+      gsap.fromTo(".scrub-word-stroke",
+        {
+          color: 'transparent',
+          WebkitTextStrokeColor: 'rgba(255,255,255,0.2)',
+          scale: 0.96,
+          y: 10,
+          filter: 'blur(1px)',
+          textShadow: '0 0 0px transparent',
+        },
+        {
+          color: (i: number, el: HTMLElement) => el.dataset.fill ?? 'rgba(255,255,255,1)',
+          WebkitTextStrokeColor: "transparent",
+          scale: 1,
+          y: 0,
+          filter: 'blur(0px)',
+          textShadow: (i: number, el: HTMLElement) => {
+            const fill = el.dataset.fill ?? 'rgba(255,255,255,1)';
+            // Green text gets a green glow, white text gets a softer white glow
+            return fill.includes('green') || fill.includes('#0ae448')
+              ? '0 0 30px rgba(10, 228, 72, 0.4), 0 0 60px rgba(10, 228, 72, 0.15)'
+              : '0 0 20px rgba(255, 252, 225, 0.2)';
+          },
+          stagger: 0.08,
+          ease: "none",
+          scrollTrigger: {
+            trigger: ".ll-intro",
+            start: "top 85%",
+            end: "center 35%",
+            scrub: true,
+          }
         }
-      });
+      );
 
       // Horizontal Scroll Section
       let scrollTween: gsap.core.Tween | undefined;
