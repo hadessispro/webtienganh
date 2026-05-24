@@ -24,6 +24,7 @@ import {
   providerLabels
 } from "../lib/product-data";
 import { CoursePathGrid } from "./CoursePathGrid";
+import { CoursesViewV2 } from "./CoursesViewV2";
 import { GroupsView } from "./GroupsView";
 import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
 
@@ -2343,17 +2344,11 @@ export function LumaUserDashboard() {
           <div className="ll-page">
             <header className="ll-topbar ll-glass">
               <div>
-                <div className="ll-label">Khóa học · {enrolledCourses.length} đang học</div>
+                <div className="ll-label">Khóa học · Lộ trình cá nhân hóa</div>
                 <h1>Hành trình của <span className="ll-accent">bạn</span></h1>
               </div>
-              <button className="ll-btn primary" type="button">Đăng ký mới</button>
             </header>
-            <CoursePathGrid
-              courses={courses}
-              profile={profile}
-              onCourseOpen={(courseId) => setSelectedCourseId(courseId)}
-              onCourseEnroll={(courseId) => enrollCourse(courseId)}
-            />
+            <CoursesViewV2 />
           </div>
         ) : null}
 
