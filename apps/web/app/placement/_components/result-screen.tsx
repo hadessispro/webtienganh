@@ -5,12 +5,36 @@
  *
  * Reveal level + skill chart radar + CTA "Mo dashboard hoc".
  * Animation: level number zoom-in with glow, skill bars stagger fill.
+ *
+ * Placement v2 additions (2026-05-24):
+ * - Accepts optional primaryGoal / goalContext / dailyMinutes /
+ *   errorPatterns props from the new multi-stage flow.
+ * - When present, persists the full v2 profile under the
+ *   `lumalang.placement.v2` key (next to the legacy v1 key so old
+ *   code can still read it during migration).
+ * - Shows a small profile recap below the level reveal so the user
+ *   feels the system actually "knows" them.
  */
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { CEFR_LABELS } from "../_lib/types";
-import type { CEFRLevel, SkillScores } from "../_lib/types";
+import {
+  CEFR_LABELS,
+  ERROR_PATTERN_LABELS,
+  EXAMS,
+  FOUNDATION_WEAKNESSES,
+  INDUSTRIES,
+  PRIMARY_GOALS,
+  TRAVEL_FOCUSES,
+} from "../_lib/types";
+import type {
+  CEFRLevel,
+  DailyMinutes,
+  ErrorPattern,
+  GoalContext,
+  PrimaryGoal,
+  SkillScores,
+} from "../_lib/types";
 
 interface Props {
   level: CEFRLevel;
@@ -18,6 +42,12 @@ interface Props {
   onRestart: () => void;
   /** If true, show test-derived score breakdown. If false (picked directly), show simpler view. */
   isFromQuiz: boolean;
+
+  // Placement v2 — optional fields, fall back gracefully when missing
+  primaryGoal?: PrimaryGoal | null;
+  goalContext?: GoalContext | null;
+  dailyMinutes?: DailyMinutes | null;
+  errorPatterns?: ErrorPattern[];
 }
 
 const PATH_LABELS: Record<CEFRLevel, string> = {
@@ -38,7 +68,16 @@ const PATH_DESCRIPTIONS: Record<CEFRLevel, string> = {
   C2: "Diễn đạt như native, viết học thuật, đàm phán cấp lãnh đạo.",
 };
 
-export default function ResultScreen({ level, skillScores, onRestart, isFromQuiz }: Props) {
+export default function ResultScreen({
+  level,
+  skillScores,
+  onRestart,
+  isFromQuiz,
+  primaryGoal = null,
+  goalContext = null,
+  dailyMinutes = null,
+  errorPatterns = [],
+}: Props) {
   const [animBars, setAnimBars] = useState(false);
 
   useEffect(() => {
@@ -49,6 +88,8 @@ export default function ResultScreen({ level, skillScores, onRestart, isFromQuiz
   const handleOpenDashboard = () => {
     if (typeof window !== "undefined") {
       try {
+        // Legacy v1 key — keep writing it during migration so any
+        // existing code that reads `lumalang:placement` still works.
         localStorage.setItem(
           "lumalang:placement",
           JSON.stringify({
@@ -56,8 +97,26 @@ export default function ResultScreen({ level, skillScores, onRestart, isFromQuiz
             skillScores,
             completedAt: new Date().toISOString(),
             via: isFromQuiz ? "quiz" : "pick",
-          })
+          }),
         );
+        // New v2 key — full profile including goal context.
+        // The recommendation engine (PR-C) will read from here.
+        if (primaryGoal) {
+          localStorage.setItem(
+            "lumalang.placement.v2",
+            JSON.stringify({
+              version: 2,
+              cefr: level,
+              primaryGoal,
+              goalContext,
+              dailyMinutes,
+              errorPatterns,
+              skillScores,
+              completedAt: new Date().toISOString(),
+              via: isFromQuiz ? "quiz" : "pick",
+            }),
+          );
+        }
       } catch (e) {
         console.warn("[placement] could not persist", e);
       }
@@ -95,6 +154,32 @@ export default function ResultScreen({ level, skillScores, onRestart, isFromQuiz
         <h1 className="result-level">{level}</h1>
         <p className="result-level-name">{CEFR_LABELS[level].vi}</p>
       </motion.div>
+
+      {/* Placement v2 — profile recap pills */}
+      {primaryGoal && (
+        <motion.div
+          className="result-profile"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.45 }}
+        >
+          <span className="result-profile-eyebrow">Hồ sơ của bạn</span>
+          <div className="result-profile-pills pv2-profile-pills">
+            <ProfilePill icon="🎯" text={describeGoal(primaryGoal, goalContext)} />
+            {dailyMinutes && (
+              <ProfilePill icon="⏱️" text={describeTime(dailyMinutes)} />
+            )}
+            {errorPatterns.length > 0 && (
+              <ProfilePill
+                icon="🔧"
+                text={`Tập trung ôn: ${errorPatterns
+                  .map((p) => ERROR_PATTERN_LABELS[p])
+                  .join(", ")}`}
+              />
+            )}
+          </div>
+        </motion.div>
+      )}
 
       <motion.div
         className="result-path"
@@ -229,6 +314,26 @@ export default function ResultScreen({ level, skillScores, onRestart, isFromQuiz
           letter-spacing: 0.04em;
         }
 
+        .result-profile {
+          width: min(540px, 92vw);
+          margin-bottom: 1rem;
+          text-align: center;
+        }
+        .result-profile-eyebrow {
+          display: block;
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: rgba(240, 255, 245, 0.45);
+          margin-bottom: 0.65rem;
+          font-weight: 600;
+        }
+        .result-profile-pills {
+          display: inline-flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 0.5rem;
+        }
         .result-path {
           text-align: center;
           max-width: 480px;
@@ -355,3 +460,63 @@ const LABELS = {
   listening: "Nghe",
   speaking: "Phản xạ nói",
 } as const;
+
+/* ────────────────────────────────────────────────────────────────────
+   Placement v2 helpers
+   ──────────────────────────────────────────────────────────────────── */
+
+function ProfilePill({ icon, text }: { icon: string; text: string }) {
+  return (
+    <span className="pv2-profile-pill">
+      <span aria-hidden="true">{icon}</span>
+      <span>{text}</span>
+    </span>
+  );
+}
+
+function describeGoal(
+  goal: PrimaryGoal,
+  ctx: GoalContext | null,
+): string {
+  const goalDef = PRIMARY_GOALS.find((g) => g.id === goal);
+  const goalName = goalDef?.vi ?? goal;
+  if (!ctx) return goalName;
+  switch (ctx.kind) {
+    case "work": {
+      const ind = INDUSTRIES.find((i) => i.id === ctx.industry);
+      return `${goalName} · ${ind?.vi ?? ctx.industry}`;
+    }
+    case "exam": {
+      const ex = EXAMS.find((e) => e.id === ctx.exam);
+      const display = ex
+        ? ex.id === "ielts" || ex.id === "vstep"
+          ? `${ex.vi} ${(ctx.targetScore / 10).toFixed(1)}`
+          : `${ex.vi} ${ctx.targetScore}`
+        : ctx.exam;
+      return `${goalName} · ${display}`;
+    }
+    case "foundation": {
+      const names = ctx.weaknesses
+        .map((w) => FOUNDATION_WEAKNESSES.find((x) => x.id === w)?.vi ?? w)
+        .join(", ");
+      return `${goalName} · ${names || "tất cả"}`;
+    }
+    case "travel": {
+      const names = ctx.focuses
+        .map((f) => TRAVEL_FOCUSES.find((x) => x.id === f)?.vi ?? f)
+        .join(", ");
+      return `${goalName} · ${names || "tổng quát"}`;
+    }
+    default:
+      return goalName;
+  }
+}
+
+function describeTime(minutes: DailyMinutes): string {
+  switch (minutes) {
+    case 10: return "5–10 phút mỗi ngày";
+    case 20: return "15–20 phút mỗi ngày";
+    case 30: return "30 phút mỗi ngày";
+    case 60: return "60+ phút mỗi ngày";
+  }
+}
