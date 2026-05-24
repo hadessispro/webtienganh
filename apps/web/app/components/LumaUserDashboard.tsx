@@ -26,6 +26,7 @@ import {
 import { CoursePathGrid } from "./CoursePathGrid";
 import { CoursesViewV2 } from "./CoursesViewV2";
 import { GroupsView } from "./GroupsView";
+import { ShadowingView } from "./ShadowingView";
 import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
 
 gsap.registerPlugin(useGSAP);
@@ -2696,64 +2697,7 @@ export function LumaUserDashboard() {
 
         {activeView === "shadowing" ? (
           <div className="ll-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Shadowing · Luyện phát âm</div>
-                <h1>Nghe và <span className="ll-accent">lặp lại</span></h1>
-              </div>
-              <div className="ll-topbar-actions">
-                <button className="ll-btn ghost" type="button">Lịch sử</button>
-                <button className="ll-btn primary" type="button">Bài mới</button>
-              </div>
-            </header>
-            <section className="ll-shadowing-hero ll-glass">
-              <div>
-                <div className="ll-metric-label">Đang luyện</div>
-                <h2>{selectedClip.title}</h2>
-                <p className="ll-shadowing-script">"{selectedClipLine}"</p>
-                <div className="ll-waveform" aria-hidden="true">
-                  {Array.from({ length: 80 }, (_, index) => (
-                    <span
-                      className={index < 31 ? "played" : index === 31 ? "current" : undefined}
-                      key={index}
-                      style={{ height: `${14 + ((index * 17 + index * index) % 54)}px` }}
-                    />
-                  ))}
-                </div>
-                <div className="ll-wave-progress-bar"><span /></div>
-                <div className="ll-wave-time-row"><span>0:12</span><span>0:32</span></div>
-                <div className="ll-tags">
-                  <span className="ll-tag">{selectedClip.level}</span>
-                  <span className="ll-tag gray">{selectedClip.context} · {selectedClip.duration.replace(" giây", "s")}</span>
-                  <span className="ll-tag orange">Phát âm {selectedClip.progress || 0}%</span>
-                </div>
-              </div>
-              <div className="ll-shadowing-control">
-                <button className="ll-play-btn" onClick={() => speak(selectedClip.transcript[0])} type="button"><LineIcon name="play" /></button>
-                <div className="ll-shadowing-time">
-                  <strong>0:12 / 0:32</strong>
-                  <span>Tốc độ 1.0x</span>
-                </div>
-                <div className="ll-speed-row">
-                  <button type="button">0.5x</button>
-                  <button className="active" type="button">1.0x</button>
-                  <button type="button">1.5x</button>
-                </div>
-              </div>
-            </section>
-            <div className="ll-card-grid ll-grid-3">
-              {shadowingClips.map((clip) => (
-                <button className={selectedClipId === clip.id ? "ll-lesson-card ll-glass active" : "ll-lesson-card ll-glass"} key={clip.id} onClick={() => setSelectedClipId(clip.id)} type="button">
-                  <div className="ll-lesson-card-header">
-                    <span className="ll-shadowing-clip-icon">{clip.icon}</span>
-                    <span className={clip.status === "Mới" ? "ll-tag yellow" : "ll-tag"}>{clip.status}</span>
-                  </div>
-                  <h2>{clip.title}</h2>
-                  <p>{clip.duration} · {clip.context} · {clip.level}</p>
-                  <ProgressBar value={clip.progress} />
-                </button>
-              ))}
-            </div>
+            <ShadowingView />
           </div>
         ) : null}
 

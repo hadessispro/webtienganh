@@ -104,29 +104,34 @@ export async function lookupWord(word: string): Promise<VocabLookup | null> {
   const key = word.trim().toLowerCase();
   if (!key) return null;
 
-  // Cache hit — even null is a valid 'we know nothing about this' result
   if (cache.has(key)) return cache.get(key) ?? null;
 
   try {
-    const res = await fetch(`${API_BASE}/${encodeURIComponent(key)}`);
+    const res = await fetch(`/api/vocab/${encodeURIComponent(key)}`);
     if (!res.ok) {
       rememberInCache(key, null);
       return null;
     }
-    const data = (await res.json()) as DictionaryEntry[];
-    if (!Array.isArray(data) || data.length === 0) {
-      rememberInCache(key, null);
-      return null;
-    }
+    const data = await res.json();
+    
+    // Transform backend VocabResult back to VocabLookup
+    const senses = data.definitions.map((d: any) => ({
+      pos: d.partOfSpeech,
+      definition: d.definition,
+      example: d.example ?? ""
+    }));
 
-    // The API returns multiple entries for homographs; pick the first
-    // entry and merge its phonetics + meanings.
-    const entry = data[0];
-    const lookup = flattenEntry(entry);
+    const lookup: VocabLookup = {
+      word: data.word,
+      ipa: data.phonetic ?? "",
+      audioUrl: data.audio ?? "",
+      senses,
+      source: "freedictionaryapi"
+    };
+
     rememberInCache(key, lookup);
     return lookup;
   } catch (err) {
-    // Network failure: log once, cache the null so we don't hammer
     console.warn("[vocab-api] lookup failed for", key, err);
     rememberInCache(key, null);
     return null;
