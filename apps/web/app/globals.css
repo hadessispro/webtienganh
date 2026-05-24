@@ -13544,3 +13544,798 @@ button {
 }
 
 body { overflow-x: hidden; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   COURSES V2 — new 3-zone personalized "Khóa học" tab
+   Added 2026-05-24 in PR-D (ui-rebuild-learn-v2).
+
+   Hierarchy of selectors:
+     .ll-courses-v2          container of 3 zones
+       .ll-path-hero         zone 1, personalized hero
+       .ll-topic-packs       zone 2, browse extras
+       .ll-path-adjust       zone 3, settings
+     .ll-skill-card          individual ASU player (used inside session)
+     .ll-session-*           session-player chrome (progress bar, exit, etc)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ll-courses-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding: 1.5rem 1rem 4rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Zone 1 — Path hero ─────────────────────────────────────────── */
+
+.ll-path-hero {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 157, 88, 0.12) 0%,
+    rgba(15, 157, 88, 0.04) 100%
+  );
+  border: 1px solid rgba(15, 157, 88, 0.25);
+  border-radius: 24px;
+  padding: 2rem 2.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+}
+.ll-path-hero--empty {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+.ll-path-hero-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.ll-path-eyebrow {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(15, 157, 88, 0.85);
+}
+.ll-path-title {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.6vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #14202b);
+  line-height: 1.2;
+}
+.ll-path-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(20, 32, 43, 0.7);
+  line-height: 1.55;
+  max-width: 720px;
+}
+
+.ll-path-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.ll-path-progress-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ll-path-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ae448 0%, #08b339 100%);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+.ll-path-progress-text {
+  font-size: 0.83rem;
+  color: rgba(20, 32, 43, 0.65);
+}
+.ll-path-progress-pct {
+  color: rgba(15, 157, 88, 0.9);
+  font-weight: 600;
+}
+
+.ll-path-today {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.ll-path-today-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary, #14202b);
+}
+.ll-path-today-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ll-path-today-more {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  font-size: 0.8rem;
+  color: rgba(20, 32, 43, 0.55);
+}
+
+.ll-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.82rem;
+  max-width: 280px;
+  overflow: hidden;
+}
+.ll-skill-chip-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.ll-skill-chip-label {
+  font-weight: 600;
+  color: rgba(20, 32, 43, 0.85);
+  flex-shrink: 0;
+}
+.ll-skill-chip-preview {
+  color: rgba(20, 32, 43, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.ll-path-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+.ll-path-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  background: var(--text-primary, #14202b);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.6rem;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+.ll-path-cta-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(20, 32, 43, 0.35);
+}
+.ll-path-cta-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Zone 2 — Topic packs ───────────────────────────────────────── */
+
+.ll-topic-packs-head h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary, #14202b);
+}
+.ll-topic-packs-head p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(20, 32, 43, 0.65);
+}
+.ll-topic-packs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+.ll-topic-pack {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 18px;
+  padding: 1.3rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.ll-topic-pack:hover {
+  transform: translateY(-2px);
+  border-color: rgba(15, 157, 88, 0.4);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.08);
+}
+.ll-topic-pack-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(20, 32, 43, 0.55);
+}
+.ll-topic-pack-level { color: rgba(15, 157, 88, 0.85); }
+.ll-topic-pack-name {
+  margin: 0.2rem 0 0.1rem;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text-primary, #14202b);
+}
+.ll-topic-pack-desc {
+  margin: 0;
+  font-size: 0.86rem;
+  color: rgba(20, 32, 43, 0.65);
+  line-height: 1.5;
+  flex: 1;
+}
+.ll-topic-pack-cta {
+  appearance: none;
+  background: rgba(0, 0, 0, 0.04);
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-size: 0.83rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: rgba(20, 32, 43, 0.6);
+  cursor: not-allowed;
+  align-self: flex-start;
+}
+
+/* ── Zone 3 — Adjust ────────────────────────────────────────────── */
+
+.ll-path-adjust {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 18px;
+  padding: 1.5rem 1.7rem;
+}
+.ll-path-adjust h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #14202b);
+}
+.ll-path-adjust p {
+  margin: 0 0 0.95rem;
+  font-size: 0.88rem;
+  color: rgba(20, 32, 43, 0.65);
+}
+.ll-path-adjust-cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1.25rem;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary, #14202b);
+  text-decoration: none;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.ll-path-adjust-cta:hover {
+  background: #fff;
+  border-color: rgba(15, 157, 88, 0.45);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SESSION PLAYER — full-screen lesson runner
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ll-session-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 1rem 1.5rem 4rem;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+.ll-session-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0 1.5rem;
+}
+.ll-session-exit {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  color: rgba(20, 32, 43, 0.7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s ease;
+}
+.ll-session-exit:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+.ll-session-progress {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.ll-session-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.07);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ll-session-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ae448, #08b339);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.ll-session-progress-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(20, 32, 43, 0.65);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ── SkillCard inner ────────────────────────────────────────────── */
+
+.ll-skill-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  padding: 2rem 2rem;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.06);
+}
+.ll-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.ll-card-type-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(15, 157, 88, 0.1);
+  color: rgba(15, 157, 88, 0.95);
+}
+
+/* Vocab + phrase shared atoms */
+.ll-card-word, .ll-card-phrase {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #14202b);
+  line-height: 1.15;
+  margin: 0.5rem 0 0.2rem;
+}
+.ll-card-phrase {
+  font-size: clamp(1.3rem, 3.2vw, 1.85rem);
+}
+.ll-card-ipa {
+  font-size: 1rem;
+  color: rgba(20, 32, 43, 0.55);
+  font-family: "Inter", monospace;
+}
+.ll-card-pos {
+  font-size: 0.82rem;
+  font-style: italic;
+  color: rgba(15, 157, 88, 0.85);
+  font-weight: 600;
+}
+.ll-card-audio-btn {
+  appearance: none;
+  background: rgba(15, 157, 88, 0.1);
+  border: 1px solid rgba(15, 157, 88, 0.3);
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  color: rgba(15, 157, 88, 0.95);
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.ll-card-audio-btn:hover {
+  background: rgba(15, 157, 88, 0.18);
+}
+.ll-card-audio-big {
+  appearance: none;
+  background: rgba(15, 157, 88, 0.12);
+  border: 2px dashed rgba(15, 157, 88, 0.5);
+  border-radius: 18px;
+  padding: 1.5rem 2rem;
+  color: rgba(15, 157, 88, 0.95);
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 1.05rem;
+  cursor: pointer;
+  width: 100%;
+}
+.ll-card-audio-big:hover {
+  background: rgba(15, 157, 88, 0.18);
+}
+
+.ll-card-phrase-vi {
+  font-size: 1.1rem;
+  color: rgba(20, 32, 43, 0.85);
+  font-weight: 500;
+}
+.ll-card-note {
+  font-size: 0.88rem;
+  color: rgba(20, 32, 43, 0.7);
+  background: rgba(255, 196, 0, 0.08);
+  border: 1px solid rgba(255, 196, 0, 0.25);
+  border-radius: 10px;
+  padding: 0.7rem 0.95rem;
+  line-height: 1.5;
+}
+
+.ll-card-definitions {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ll-card-definitions li {
+  border-left: 3px solid rgba(15, 157, 88, 0.4);
+  padding-left: 0.9rem;
+}
+.ll-card-def-vi {
+  font-size: 0.95rem;
+  color: var(--text-primary, #14202b);
+  font-weight: 500;
+}
+.ll-card-def-example {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: rgba(20, 32, 43, 0.65);
+}
+
+/* Grammar */
+.ll-card-grammar { gap: 1rem; }
+.ll-card-grammar-title {
+  margin: 0.3rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #14202b);
+}
+.ll-card-grammar-pattern {
+  font-family: ui-monospace, "SF Mono", monospace;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+  color: rgba(20, 32, 43, 0.85);
+  width: 100%;
+}
+.ll-card-grammar-explain {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: rgba(20, 32, 43, 0.78);
+}
+.ll-card-grammar-examples,
+.ll-card-grammar-mistakes {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.ll-card-grammar-section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(20, 32, 43, 0.55);
+}
+.ll-card-grammar-example {
+  border-left: 3px solid rgba(15, 157, 88, 0.35);
+  padding-left: 0.9rem;
+}
+.ll-card-grammar-example-en {
+  font-weight: 500;
+  color: var(--text-primary, #14202b);
+}
+.ll-card-grammar-example-vi {
+  font-size: 0.86rem;
+  color: rgba(20, 32, 43, 0.6);
+}
+.ll-card-grammar-mistakes ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: rgba(20, 32, 43, 0.7);
+  font-size: 0.87rem;
+  line-height: 1.55;
+}
+
+/* Listening */
+.ll-card-listening-q {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.4rem 0 0;
+  color: var(--text-primary, #14202b);
+}
+.ll-card-listening-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+.ll-card-listening-opt {
+  appearance: none;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 0.85rem 1.1rem;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.93rem;
+  color: var(--text-primary, #14202b);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.ll-card-listening-opt:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.22);
+}
+.ll-card-listening-opt:disabled { cursor: default; }
+.ll-card-listening-opt.is-correct {
+  background: rgba(15, 157, 88, 0.15);
+  border-color: rgba(15, 157, 88, 0.55);
+  color: rgba(15, 157, 88, 0.95);
+  font-weight: 600;
+}
+.ll-card-listening-opt.is-wrong {
+  background: rgba(226, 58, 110, 0.12);
+  border-color: rgba(226, 58, 110, 0.55);
+}
+
+/* Pronunciation */
+.ll-card-pronunciation-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+}
+.ll-card-pronunciation-tip {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(20, 32, 43, 0.7);
+  background: rgba(255, 196, 0, 0.08);
+  border: 1px solid rgba(255, 196, 0, 0.25);
+  border-radius: 10px;
+  padding: 0.7rem 0.95rem;
+  line-height: 1.55;
+  width: 100%;
+}
+.ll-card-pronunciation-pairs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+}
+.ll-card-pronunciation-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.ll-card-pron-word {
+  flex: 1;
+  appearance: none;
+  background: rgba(15, 157, 88, 0.1);
+  border: 1px solid rgba(15, 157, 88, 0.3);
+  border-radius: 12px;
+  padding: 0.85rem 1.1rem;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: rgba(15, 157, 88, 0.95);
+  cursor: pointer;
+  text-align: center;
+}
+.ll-card-pron-word:hover {
+  background: rgba(15, 157, 88, 0.18);
+}
+.ll-card-pron-word--contrast {
+  background: rgba(226, 58, 110, 0.1);
+  border-color: rgba(226, 58, 110, 0.3);
+  color: rgba(226, 58, 110, 0.95);
+}
+.ll-card-pron-word--contrast:hover {
+  background: rgba(226, 58, 110, 0.18);
+}
+.ll-card-pron-vs {
+  font-size: 0.78rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(20, 32, 43, 0.45);
+  font-weight: 700;
+}
+
+/* Reading + writing */
+.ll-card-reading-passage {
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: var(--text-primary, #14202b);
+  padding: 1.1rem 1.3rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 14px;
+  width: 100%;
+}
+.ll-card-writing-textarea {
+  width: 100%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 0.95rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--text-primary, #14202b);
+  resize: vertical;
+  outline: none;
+  min-height: 130px;
+}
+.ll-card-writing-textarea:focus { border-color: rgba(15, 157, 88, 0.55); }
+
+/* Self-check footer (shared across most card types) */
+.ll-card-self-check {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.ll-card-self-check p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(20, 32, 43, 0.7);
+}
+.ll-card-self-check-btns {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.ll-card-cta-primary {
+  appearance: none;
+  background: var(--text-primary, #14202b);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1.4rem;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  flex: 1;
+  min-width: 140px;
+}
+.ll-card-cta-primary:hover:not(:disabled) {
+  box-shadow: 0 8px 22px rgba(20, 32, 43, 0.3);
+}
+.ll-card-cta-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.ll-card-cta-secondary {
+  appearance: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #14202b);
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1.4rem;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  flex: 1;
+  min-width: 140px;
+}
+.ll-card-cta-secondary:hover { background: rgba(0, 0, 0, 0.12); }
+
+/* ── Session complete ───────────────────────────────────────────── */
+
+.ll-session-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #fff;
+  border-radius: 24px;
+  border: 1px solid rgba(15, 157, 88, 0.3);
+  box-shadow: 0 20px 50px rgba(15, 157, 88, 0.15);
+  max-width: 520px;
+  margin: 2rem auto;
+}
+.ll-session-complete-emoji {
+  font-size: 4rem;
+}
+.ll-session-complete-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #14202b);
+}
+.ll-session-complete-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 0.8rem;
+}
+.ll-session-stat {
+  text-align: center;
+}
+.ll-session-stat-num {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: rgba(15, 157, 88, 0.95);
+  line-height: 1;
+}
+.ll-session-stat-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(20, 32, 43, 0.55);
+  margin-top: 0.4rem;
+}
+.ll-session-complete-msg {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.95rem;
+  color: rgba(20, 32, 43, 0.65);
+  line-height: 1.55;
+}
+.ll-session-complete-cta {
+  appearance: none;
+  background: var(--text-primary, #14202b);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.ll-session-complete-cta:hover {
+  box-shadow: 0 8px 22px rgba(20, 32, 43, 0.3);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .ll-courses-v2 { padding: 1rem 0.8rem 3rem; gap: 1.8rem; }
+  .ll-path-hero { padding: 1.5rem 1.3rem; border-radius: 18px; }
+  .ll-path-title { font-size: 1.35rem; }
+  .ll-skill-chip { max-width: 100%; }
+  .ll-topic-packs-grid { grid-template-columns: 1fr; }
+  .ll-skill-card { padding: 1.5rem 1.3rem; border-radius: 18px; }
+  .ll-card-cta-primary, .ll-card-cta-secondary {
+    min-width: 0; width: 100%;
+  }
+}
