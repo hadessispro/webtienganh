@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { LumaUserDashboard } from "../components/LumaUserDashboard";
+import { AuthAwareDashboard } from "../components/AuthAwareDashboard";
 
 export default function LearnPage() {
   const [mounted, setMounted] = useState(false);
@@ -37,7 +37,7 @@ export default function LearnPage() {
 
   return (
     <main className="page-shell theme-light workspace-page">
-      {mounted ? <LumaUserDashboard /> : null}
+      {mounted ? <AuthAwareDashboard /> : null}
     </main>
   );
 }
