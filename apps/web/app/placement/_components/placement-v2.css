@@ -1,25 +1,23 @@
 /**
  * Path: apps/web/app/placement/_components/placement-v2.css
  *
- * Global CSS for Placement v2 multi-stage screens.
+ * Plain global CSS for Placement v2. Loaded once at the top of
+ * `page.tsx`. All selectors prefixed `.pv2-*` to avoid collisions
+ * with the legacy `.placement-*` rules used by v1 screens.
  *
- * Why a global CSS file (not module, not styled-jsx)?
- *  - CSS modules under Next.js 16 + Turbopack occasionally fail to
- *    inject class names on hot-reload, leaving the page unstyled.
- *  - Styled-jsx with `<style jsx global>` inside each component
- *    leaked rules and made debugging the cascade impossible.
- *  - A plain CSS file imported once is bulletproof and easy to
- *    inspect in DevTools.
- *
- * Naming: every selector is prefixed `.pv2-*` so it can't collide
- * with the legacy `.placement-*` rules used by v1 screens (splash,
- * picker, quiz, result).
- *
- * Import: this file is imported once at the top of `page.tsx`.
+ * Layout philosophy (after 2026-05-24 review #2):
+ *  - Root is flex column, FULLY centers content both axes.
+ *  - Step badge & back button are absolutely positioned to the
+ *    screen edges, NEVER inside the centered header (was causing
+ *    overlap).
+ *  - Cards have explicit min-height and explicit gap between
+ *    emoji/title/desc to prevent text overflowing in narrow grids.
+ *  - All transitions are CSS — no transform on hover to avoid
+ *    layout shift surprises.
  */
 
 /* ──────────────────────────────────────────────────────────────────
-   Layout primitives
+   Root — full viewport, centered both axes
    ────────────────────────────────────────────────────────────────── */
 
 .pv2-root {
@@ -44,7 +42,11 @@
   margin: auto;
 }
 
-/* Back button — absolute to the root, top-left corner */
+/* ──────────────────────────────────────────────────────────────────
+   Floating UI elements — back button + step badge
+   Both positioned absolute to the screen, not inside the header.
+   ────────────────────────────────────────────────────────────────── */
+
 .pv2-back {
   position: absolute;
   top: 1.5rem;
@@ -52,10 +54,10 @@
   appearance: none;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(240, 255, 245, 0.75);
+  color: rgba(240, 255, 245, 0.78);
   padding: 0.5rem 1rem;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   cursor: pointer;
   font-family: inherit;
   z-index: 10;
@@ -66,13 +68,11 @@
   color: #f0fff5;
 }
 
-/* Step badge fixed at top-left (NOT inside header — prevents overlap) */
 .pv2-step-badge {
   position: absolute;
   top: 1.5rem;
-  left: 1.5rem;
-  display: inline-block;
-  font-size: 0.72rem;
+  right: 1.5rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -82,12 +82,15 @@
   color: rgba(255, 255, 255, 0.72);
   z-index: 10;
 }
-/* When BOTH a back button AND step badge are present, push the
-   badge to the right so they don't stack on top of each other. */
-.pv2-back + .pv2-step-badge {
-  left: auto;
-  right: 1.5rem;
+/* On stage 1 (no back button) put the badge at the LEFT */
+.pv2-root:not(:has(.pv2-back)) .pv2-step-badge {
+  left: 1.5rem;
+  right: auto;
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   Header — centered title + sub
+   ────────────────────────────────────────────────────────────────── */
 
 .pv2-head {
   text-align: center;
@@ -95,7 +98,7 @@
 }
 .pv2-head h1 {
   margin: 0;
-  font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+  font-size: clamp(1.55rem, 3.2vw, 2.25rem);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -106,23 +109,22 @@
   max-width: 540px;
   font-size: 0.92rem;
   color: rgba(240, 255, 245, 0.65);
-  line-height: 1.6;
+  line-height: 1.55;
 }
-.pv2-head strong {
+.pv2-head p strong {
   color: #c2f7d5;
   font-weight: 700;
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   Card grid — 4 or 5 large cards, equal heights
+   Card grid (Why + Time screens — large cards w/ emoji, title, desc)
    ────────────────────────────────────────────────────────────────── */
 
 .pv2-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   width: 100%;
-  align-items: stretch; /* equal heights so cards line up */
 }
 
 .pv2-card {
@@ -130,47 +132,54 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  padding: 1.6rem 1.3rem;
+  padding: 1.5rem 1.25rem;
   color: #f0fff5;
   cursor: pointer;
-  text-align: left;
   font-family: inherit;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 0.5rem;
   width: 100%;
   min-width: 0;
-  min-height: 150px; /* gives cards a baseline height */
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  min-height: 160px;
+  box-sizing: border-box;
   transition: background 0.25s ease, border-color 0.25s ease,
-    box-shadow 0.25s ease, transform 0.25s ease;
+    box-shadow 0.25s ease;
 }
 .pv2-card:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 12px 32px rgba(15, 157, 88, 0.18);
-  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(15, 157, 88, 0.18);
 }
 .pv2-card-emoji {
-  font-size: 1.9rem;
+  font-size: 1.85rem;
   line-height: 1;
+  display: block;
+  margin-bottom: 0.15rem;
 }
 .pv2-card-title {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.3;
+  display: block;
+  width: 100%;
 }
 .pv2-card-desc {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: rgba(240, 255, 245, 0.55);
   line-height: 1.5;
+  display: block;
+  width: 100%;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   Pill grid — smaller selectable chips (goal context branches)
+   Pill grid (Goal-context branches — smaller chips)
    ────────────────────────────────────────────────────────────────── */
 
 .pv2-pill-grid {
@@ -179,6 +188,7 @@
   gap: 0.7rem;
   width: 100%;
 }
+
 .pv2-pill {
   appearance: none;
   background: rgba(255, 255, 255, 0.04);
@@ -195,13 +205,12 @@
   text-align: left;
   width: 100%;
   min-width: 0;
-  transition: background 0.2s ease, border-color 0.2s ease,
-    transform 0.18s ease;
+  box-sizing: border-box;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 .pv2-pill:hover {
   background: rgba(255, 255, 255, 0.09);
   border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
 }
 .pv2-pill.is-active {
   background: rgba(15, 157, 88, 0.18);
@@ -219,30 +228,8 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   CTA + footer
+   Footer (multi-select submit row)
    ────────────────────────────────────────────────────────────────── */
-
-.pv2-cta {
-  appearance: none;
-  background: #0ae448;
-  color: #062514;
-  border: 0;
-  border-radius: 999px;
-  padding: 0.75rem 1.5rem;
-  font-weight: 600;
-  font-family: inherit;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
-}
-.pv2-cta:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 22px rgba(10, 228, 72, 0.4);
-}
-.pv2-cta:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 
 .pv2-foot {
   display: flex;
@@ -257,7 +244,33 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   Exam branch — score slider
+   Primary CTA
+   ────────────────────────────────────────────────────────────────── */
+
+.pv2-cta {
+  appearance: none;
+  background: #0ae448;
+  color: #062514;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+.pv2-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(10, 228, 72, 0.4);
+}
+.pv2-cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Exam branch — target score slider
    ────────────────────────────────────────────────────────────────── */
 
 .pv2-exam-target {
@@ -306,7 +319,7 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   Calibration — quiz card with options
+   Calibration — question card + options
    ────────────────────────────────────────────────────────────────── */
 
 .pv2-cal-card {
@@ -314,8 +327,6 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 22px;
   padding: 2rem 1.85rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   width: 100%;
   box-sizing: border-box;
 }
@@ -346,7 +357,8 @@
   gap: 0.9rem;
   text-align: left;
   width: 100%;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  box-sizing: border-box;
+  transition: all 0.18s ease;
 }
 .pv2-cal-opt:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
@@ -397,7 +409,7 @@
   background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   overflow: hidden;
-  margin-top: 0.6rem;
+  margin-top: 0.5rem;
 }
 .pv2-cal-bar-fill {
   height: 100%;
@@ -420,57 +432,65 @@
 .pv2-cal-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
   margin-bottom: 0.85rem;
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   Result screen — profile pills
+   Result-screen v2 additions — profile recap pills
+   (kept inside this file so all placement v2 styles live together)
    ────────────────────────────────────────────────────────────────── */
 
-.pv2-profile-pills {
+.result-profile {
+  width: min(540px, 92vw);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+.result-profile-eyebrow {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(240, 255, 245, 0.45);
+  margin-bottom: 0.65rem;
+  font-weight: 600;
+}
+.result-profile-pills {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.5rem;
-  max-width: 100%;
-}
-.pv2-profile-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  font-size: 0.85rem;
-  color: rgba(240, 255, 245, 0.85);
-  white-space: nowrap;
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   Mobile-ish tightening
+   Responsive — tablet & below
    ────────────────────────────────────────────────────────────────── */
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .pv2-root {
-    padding: 4.5rem 1rem 2rem;
+    padding: 4rem 1rem 2rem;
   }
+  .pv2-back, .pv2-step-badge {
+    top: 1rem;
+    font-size: 0.7rem;
+    padding: 0.35rem 0.8rem;
+  }
+  .pv2-back { left: 1rem; }
+  .pv2-step-badge { right: 1rem; }
   .pv2-card-grid {
     grid-template-columns: 1fr;
+    gap: 0.7rem;
   }
   .pv2-card {
-    min-height: auto;
+    min-height: 130px;
+    padding: 1.2rem 1.1rem;
   }
-  .pv2-back,
-  .pv2-step-badge {
-    top: 1rem;
-    left: 1rem;
-    padding: 0.35rem 0.8rem;
-    font-size: 0.7rem;
+  .pv2-pill-grid {
+    grid-template-columns: 1fr;
   }
-  .pv2-back + .pv2-step-badge {
-    right: 1rem;
+  .pv2-cal-card {
+    padding: 1.5rem 1.25rem;
   }
 }
