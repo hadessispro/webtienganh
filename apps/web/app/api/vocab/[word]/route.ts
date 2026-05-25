@@ -27,39 +27,21 @@ export async function GET(
     return NextResponse.json({ error: "Word not found" }, { status: 404 });
   }
 
-  // 3. Translate the first definition to Vietnamese using DeepSeek if available
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (apiKey && result.definitions.length > 0) {
+  // 3. Translate the first definition to Vietnamese using Free Google Translate API
+  if (result.definitions.length > 0) {
     try {
       const englishDef = result.definitions[0].definition;
-      const aiRes = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            {
-              role: "system",
-              content: "Dịch định nghĩa tiếng Anh sau sang tiếng Việt thật tự nhiên và ngắn gọn (chỉ trả về chuỗi tiếng Việt, KHÔNG giải thích thêm, KHÔNG có ngoặc kép):"
-            },
-            { role: "user", content: englishDef }
-          ],
-          temperature: 0.3
-        }),
-      });
-
-      if (aiRes.ok) {
-        const aiData = await aiRes.json();
-        const translated = aiData.choices?.[0]?.message?.content;
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(englishDef)}`;
+      const gtRes = await fetch(url);
+      if (gtRes.ok) {
+        const data = await gtRes.json();
+        const translated = data[0]?.[0]?.[0];
         if (translated) {
-          result.definitions[0].definition = translated.trim();
+          result.definitions[0].definition = translated;
         }
       }
     } catch (e) {
-      console.error("DeepSeek translation error:", e);
+      console.error("Google Translate error:", e);
     }
   }
   
