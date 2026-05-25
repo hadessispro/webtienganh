@@ -28,6 +28,7 @@ import { CoursesViewV2 } from "./CoursesViewV2";
 import { LessonsViewV2 } from "./LessonsViewV2";
 import { PracticeViewV2 } from "./PracticeViewV2";
 import { ExamHubV2 } from "./ExamHubV2";
+import { ExamRoom } from "./ExamRoom";
 import { GroupsView } from "./GroupsView";
 import { ShadowingView } from "./ShadowingView";
 import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
@@ -53,6 +54,7 @@ type LineIconName =
   | "target"
   | "chart"
   | "folder"
+  | "exams"
   | "users";
 
 type ShadowingClip = {
@@ -889,6 +891,7 @@ function LineIcon({ name }: { name: LineIconName }) {
     target: <path {...common} d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />,
     chart: <path {...common} d="M5 19V9M12 19V5M19 19v-7" />,
     folder: <path {...common} d="M4 7h6l2 2h8v9H4z" />,
+    exams: <path {...common} d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />,
     users: <path {...common} d="M16 19a4 4 0 0 0-8 0M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM20 18a3 3 0 0 0-3-3" />
   };
 
@@ -1188,6 +1191,7 @@ export function LumaUserDashboard() {
   const [profile, setProfile] = useState<LearnerProfile | null>(null);
   const [courses, setCourses] = useState<Course[]>(defaultCourses);
   const [activeView, setActiveView] = useState<LearningView>("today");
+  const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState(defaultCourses[0]?.id ?? "");
   const [selectedClipId, setSelectedClipId] = useState(shadowingClips[0].id);
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
@@ -2118,6 +2122,10 @@ export function LumaUserDashboard() {
     );
   }
 
+  if (activeExamId) {
+    return <ExamRoom examId={activeExamId} onExit={() => setActiveExamId(null)} />;
+  }
+
   return (
     <section className="ll-dashboard" aria-label="Dashboard học tiếng Anh">
       <aside className="ll-nav ll-glass" aria-label="Điều hướng học">
@@ -2645,7 +2653,7 @@ export function LumaUserDashboard() {
 
         {activeView === "exams" ? (
           <div className="ll-page">
-            <ExamHubV2 />
+            <ExamHubV2 profile={profile} onStartExam={setActiveExamId} />
           </div>
         ) : null}
 

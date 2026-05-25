@@ -1,18 +1,34 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import type { LearnerProfile } from "../lib/product-data";
 
-export function ExamHubV2() {
-  const [activeCategory, setActiveCategory] = useState("ielts");
+export function ExamHubV2({ profile, onStartExam }: { profile: LearnerProfile, onStartExam: (id: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState(() => {
+    if (profile.goal === "work") return "toeic";
+    if (profile.goal === "foundation") return "vstep";
+    return "ielts"; // exam
+  });
 
   // Mock data for UI presentation
-  const categories = [
-    { id: "ielts", name: "IELTS Academic" },
-    { id: "toeic", name: "TOEIC Listening & Reading" },
-    { id: "cambridge", name: "Cambridge PET/KET" },
-    { id: "vstep", name: "VSTEP (A1-C1)" }
+  const allCategories = [
+    { id: "ielts", name: "IELTS Academic", goals: ["exam"] },
+    { id: "toeic", name: "TOEIC Listening & Reading", goals: ["work", "exam"] },
+    { id: "cambridge", name: "Cambridge PET/KET", goals: ["foundation", "exam"] },
+    { id: "vstep", name: "VSTEP (A1-C1)", goals: ["foundation", "work"] }
   ];
+
+  // Lọc bớt các đề không phù hợp nếu là work/foundation để đỡ ngợp.
+  // Nếu là exam thì show hết hoặc những cái dành riêng cho exam.
+  const categories = useMemo(() => {
+    return allCategories.filter(c => c.goals.includes(profile.goal) || profile.goal === "exam");
+  }, [profile.goal]);
+
+  // Nếu tab hiện tại bị filter mất thì fallback
+  if (!categories.find(c => c.id === activeCategory)) {
+    setActiveCategory(categories[0]?.id || "ielts");
+  }
 
   const mockExams = [
     { id: "cam-18-test-1", title: "Cambridge IELTS 18 - Test 1", questions: 40, time: 60, type: "Listening" },
@@ -96,11 +112,14 @@ export function ExamHubV2() {
             </div>
             
             <div style={{ marginTop: "24px" }}>
-              <button style={{ 
-                width: "100%", padding: "10px", background: "#ecfdf5", 
-                color: "#059669", borderRadius: "8px", fontWeight: "600", 
-                border: "none", cursor: "pointer" 
-              }}>
+              <button 
+                onClick={() => onStartExam(exam.id)}
+                style={{ 
+                  width: "100%", padding: "10px", background: "#ecfdf5", 
+                  color: "#059669", borderRadius: "8px", fontWeight: "600", 
+                  border: "none", cursor: "pointer" 
+                }}
+              >
                 Làm bài
               </button>
             </div>
