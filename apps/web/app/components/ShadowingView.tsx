@@ -359,9 +359,9 @@ export function ShadowingView() {
           </p>
         ) : (
           <div className="ll-shadow-clip-grid">
-            {clips.map((clip) => (
+            {clips.map((clip, index) => (
               <ClipCard
-                key={clip.id}
+                key={clip.id || `clip-${index}`}
                 clip={clip}
                 userCefr={profile?.cefr}
                 onPick={() => setActiveClip(clip)}
