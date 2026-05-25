@@ -16,6 +16,12 @@ const PRESET_YOUTUBE_IDS = [
   { id: "7NOSDKb0HlU", name: "Chillhop Music" }
 ];
 
+function extractYoutubeId(input: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = input.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : input.trim();
+}
+
 export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => void }) {
   const [durationMinutes, setDurationMinutes] = useState(25);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -184,16 +190,16 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
             <button onClick={() => setShowMusic(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: "12px", cursor: "pointer" }}>Đóng</button>
           </div>
           
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", paddingBottom: "4px" }}>
               {PRESET_YOUTUBE_IDS.map(preset => (
                 <button
                   key={preset.id}
                   onClick={() => { setYtVideoId(preset.id); setIsYtPlaying(true); }}
                   style={{
-                    padding: "6px 12px", borderRadius: "8px", border: "none", cursor: "pointer", whiteSpace: "nowrap",
+                    padding: "8px 12px", borderRadius: "8px", border: "none", cursor: "pointer", whiteSpace: "nowrap",
                     background: ytVideoId === preset.id ? "#10b981" : "rgba(255,255,255,0.1)",
-                    color: "white", fontSize: "12px", fontWeight: "600"
+                    color: "white", fontSize: "13px", fontWeight: "600", transition: "all 0.2s"
                   }}
                 >
                   {preset.name}
@@ -201,19 +207,24 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
               <input 
                 type="text" 
-                placeholder="Dán YouTube ID..." 
+                placeholder="Dán Link hoặc ID YouTube..." 
                 value={ytCustomId}
                 onChange={e => setYtCustomId(e.target.value)}
-                style={{ flex: 1, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "6px", padding: "8px", color: "white", fontSize: "12px" }}
+                style={{ flex: 1, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", padding: "10px", color: "white", fontSize: "13px", outline: "none" }}
               />
               <button 
-                onClick={() => { if(ytCustomId) { setYtVideoId(ytCustomId); setIsYtPlaying(true); } }}
-                style={{ background: "white", color: "black", border: "none", padding: "0 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}
+                onClick={() => { 
+                  if(ytCustomId) { 
+                    setYtVideoId(extractYoutubeId(ytCustomId)); 
+                    setIsYtPlaying(true); 
+                  } 
+                }}
+                style={{ background: "white", color: "black", border: "none", padding: "0 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" }}
               >
-                Mở
+                Phát
               </button>
             </div>
 
@@ -278,19 +289,21 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
             </div>
 
             {/* Split Screen Exam Content Area */}
-            <div style={{ flex: 1, overflow: "hidden", display: "flex", background: "white", color: "black" }}>
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", background: "white", color: "black", borderTop: "1px solid #e5e7eb" }}>
               {loadingExam ? (
-                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>Đang tải đề thi...</div>
+                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", fontWeight: "500", color: "#6b7280" }}>
+                  <span className="ll-spinner" style={{ marginRight: "12px" }}></span> Đang tải đề thi...
+                </div>
               ) : examData ? (
                 <>
                   {/* Left Panel: Passage / Context */}
-                  <div style={{ flex: 1, borderRight: "2px solid #e5e7eb", padding: "40px", overflowY: "auto", background: "#f9fafb" }}>
-                    <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "24px" }}>Nội dung bài thi</h2>
+                  <div style={{ flex: 1, borderRight: "2px solid #e5e7eb", padding: "40px", overflowY: "auto", background: "#f9fafb", scrollbarWidth: "thin" }}>
+                    <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "32px", color: "#111827" }}>Nội dung bài thi</h2>
                     {examData.parts.map((part: any) => (
-                      <div key={part.id} style={{ marginBottom: "40px" }}>
-                        <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#059669" }}>{part.title}</h3>
+                      <div key={part.id} style={{ marginBottom: "48px" }}>
+                        <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#059669", marginBottom: "16px", paddingBottom: "8px", borderBottom: "2px solid #d1fae5" }}>{part.title}</h3>
                         {part.content && (
-                          <div style={{ padding: "24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", marginTop: "16px", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                          <div style={{ padding: "32px", background: "white", borderRadius: "16px", border: "1px solid #e5e7eb", whiteSpace: "pre-wrap", lineHeight: 1.8, fontSize: "16px", color: "#374151", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
                             {part.content}
                           </div>
                         )}
@@ -299,20 +312,20 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                   </div>
 
                   {/* Right Panel: Questions */}
-                  <div style={{ flex: 1, padding: "40px", overflowY: "auto" }}>
-                    <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "24px" }}>Phiếu trả lời</h2>
+                  <div style={{ flex: 1, padding: "40px", overflowY: "auto", scrollbarWidth: "thin", background: "white" }}>
+                    <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "32px", color: "#111827" }}>Phiếu trả lời</h2>
                     {examData.parts.map((part: any) => (
-                      <div key={`q-${part.id}`} style={{ marginBottom: "32px" }}>
+                      <div key={`q-${part.id}`} style={{ marginBottom: "40px" }}>
                         {part.questions.map((q: any) => (
-                          <div key={q.id} style={{ marginBottom: "32px", padding: "24px", background: "#f3f4f6", borderRadius: "12px" }}>
-                            <p style={{ fontWeight: "600", fontSize: "16px", marginBottom: "16px" }}>
-                              <span style={{ color: "#059669", marginRight: "8px" }}>Câu {q.order}:</span> {q.question}
+                          <div key={q.id} style={{ marginBottom: "24px", padding: "24px", background: "#f9fafb", borderRadius: "16px", border: "1px solid #f3f4f6" }}>
+                            <p style={{ fontWeight: "600", fontSize: "16px", marginBottom: "20px", color: "#1f2937", lineHeight: 1.5 }}>
+                              <span style={{ color: "#059669", marginRight: "8px", background: "#d1fae5", padding: "4px 8px", borderRadius: "6px" }}>Câu {q.order}</span> {q.question}
                             </p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                               {q.options?.map((ans: string, i: number) => (
-                                <label key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer" }}>
-                                  <input type="radio" name={`q${q.id}`} value={ans} />
-                                  <span>{ans}</span>
+                                <label key={i} style={{ display: "flex", alignItems: "center", gap: "16px", padding: "16px 20px", background: "white", border: "2px solid #e5e7eb", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s" }} className="exam-option-hover">
+                                  <input type="radio" name={`q${q.id}`} value={ans} style={{ width: "20px", height: "20px", accentColor: "#059669" }} />
+                                  <span style={{ fontSize: "15px", color: "#4b5563" }}>{ans}</span>
                                 </label>
                               ))}
                             </div>
@@ -321,13 +334,13 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                       </div>
                     ))}
 
-                    <button style={{ width: "100%", padding: "16px", background: "#059669", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", marginTop: "16px" }}>
+                    <button style={{ width: "100%", padding: "20px", background: "#059669", color: "white", border: "none", borderRadius: "12px", fontWeight: "bold", fontSize: "18px", cursor: "pointer", marginTop: "24px", boxShadow: "0 10px 15px -3px rgba(5, 150, 105, 0.3)", transition: "all 0.2s" }} className="exam-submit-btn">
                       Nộp Bài
                     </button>
                   </div>
                 </>
               ) : (
-                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", color: "red" }}>Không tìm thấy dữ liệu đề thi.</div>
+                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", color: "red", fontSize: "18px" }}>Không tìm thấy dữ liệu đề thi.</div>
               )}
             </div>
           </motion.div>

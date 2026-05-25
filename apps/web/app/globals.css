@@ -15609,3 +15609,4 @@ body { overflow-x: hidden; }
   .ll-practice-v2-metrics { grid-template-columns: 1fr; }
   .ll-practice-v2-quick-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.exam-option-hover:hover { background: #ecfdf5 !important; border-color: #34d399 !important; transform: translateY(-1px); } .exam-submit-btn:hover { background: #047857 !important; transform: translateY(-2px); }
