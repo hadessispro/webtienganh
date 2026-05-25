@@ -27,6 +27,10 @@ export async function POST(req: Request) {
     },
     create: {
       userId: session.user.id,
+      goal: data.goal || "communication",
+      cefr: data.cefr || "A1",
+      targetCefr: data.targetCefr || "B1",
+      studyPathId: data.studyPathId || "general",
       ...data,
     }
   })

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import YouTube, { YouTubePlayer } from "react-youtube";
 
 const QUOTES = [
   "Tập trung tốt hơn, đạt điểm cao hơn",
@@ -30,10 +29,10 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
   const [quote, setQuote] = useState(QUOTES[0]);
   
   // YouTube API state
-  const [ytPlayer, setYtPlayer] = useState<YouTubePlayer | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [ytVideoId, setYtVideoId] = useState(PRESET_YOUTUBE_IDS[0].id);
   const [ytCustomId, setYtCustomId] = useState("");
-  const [isYtPlaying, setIsYtPlaying] = useState(false);
+  const [isYtPlaying, setIsYtPlaying] = useState(true);
   const [ytVolume, setYtVolume] = useState(50);
 
   useEffect(() => {
@@ -58,18 +57,18 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
   }, [durationMinutes]);
 
   useEffect(() => {
-    if (ytPlayer) {
-      ytPlayer.setVolume(ytVolume);
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(`{"event":"command","func":"setVolume","args":[${ytVolume}]}`, '*');
     }
-  }, [ytVolume, ytPlayer]);
+  }, [ytVolume]);
 
   const toggleYtPlay = () => {
-    if (!ytPlayer) return;
+    if (!iframeRef.current?.contentWindow) return;
     if (isYtPlaying) {
-      ytPlayer.pauseVideo();
+      iframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
       setIsYtPlaying(false);
     } else {
-      ytPlayer.playVideo();
+      iframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
       setIsYtPlaying(true);
     }
   };
@@ -237,19 +236,13 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
           </p>
 
           {/* Hidden YouTube Player */}
-          <div style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0, overflow: "hidden" }}>
-            <YouTube 
-              videoId={ytVideoId}
-              opts={{
-                playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, modestbranding: 1 }
-              }}
-              onReady={(event) => {
-                setYtPlayer(event.target);
-                event.target.setVolume(ytVolume);
-                if (isYtPlaying) event.target.playVideo();
-              }}
-              onPlay={() => setIsYtPlaying(true)}
-              onPause={() => setIsYtPlaying(false)}
+          <div style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "10px", height: "10px", overflow: "hidden" }}>
+            <iframe 
+              ref={iframeRef}
+              src={`https://www.youtube.com/embed/${ytVideoId}?enablejsapi=1&autoplay=1&controls=0`}
+              allow="autoplay"
+              width="10" height="10"
+              title="YouTube Lofi Background"
             />
           </div>
         </div>
