@@ -85,6 +85,10 @@ export function ShadowingPlayer({
     useState<MicPermissionState>("unknown");
   const [playbackRate, setPlaybackRate] = useState<1 | 0.75 | 0.5>(1);
 
+  // Vocab integration state
+  const [vocabList, setVocabList] = useState<any[]>([]);
+  const [selectedVocab, setSelectedVocab] = useState<any | null>(null);
+
   // Auto-loop state
   const [isAutoLoop, setIsAutoLoop] = useState(true);
   const [loopAttempts, setLoopAttempts] = useState(0);
@@ -111,6 +115,21 @@ export function ShadowingPlayer({
   useEffect(() => {
     currentIdxRef.current = currentIdx;
   }, [currentIdx]);
+
+  // Fetch vocabulary present in the clip
+  useEffect(() => {
+    const allText = segments.map((s) => s.text_en).join(" ");
+    fetch("/api/shadowing/extract-vocab", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: allText }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.matches) setVocabList(data.matches);
+      })
+      .catch(() => {});
+  }, [segments]);
 
   // Subscribe to YouTube currentTime for karaoke
   const { currentTime, playerState } = useYouTubeTime(videoRef, true);
@@ -446,6 +465,35 @@ export function ShadowingPlayer({
           </div>
         </div>
 
+        <div style={{ padding: "24px", borderBottom: "1px solid var(--line)" }}>
+          <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700 }}>Từ vựng trong bài</h3>
+          {vocabList.length > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {vocabList.map(v => (
+                <div 
+                  key={v.skillId} 
+                  onClick={() => setSelectedVocab(v)} 
+                  style={{ 
+                    padding: "6px 12px", 
+                    background: selectedVocab?.skillId === v.skillId ? "var(--ink)" : "white", 
+                    color: selectedVocab?.skillId === v.skillId ? "white" : "var(--ink)", 
+                    borderRadius: "100px", 
+                    fontSize: "12px", 
+                    fontWeight: 600, 
+                    border: "1px solid var(--line)", 
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {v.word}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Đang phân tích từ vựng...</div>
+          )}
+        </div>
+
         <div style={{ padding: "24px", flex: 1 }}>
           <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700 }}>Danh sách câu</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -494,7 +542,7 @@ export function ShadowingPlayer({
           </div>
 
           <div style={{ textAlign: "center", minHeight: "120px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-            <KaraokeLine text={currentSegment.text_en} wordDiffs={wordDiffs} karaokeIdx={karaokeIdx} />
+            <KaraokeLine text={currentSegment.text_en} wordDiffs={wordDiffs} karaokeIdx={karaokeIdx} vocabList={vocabList} onVocabClick={setSelectedVocab} />
             {currentSegment.text_vi && (
               <p style={{ fontSize: "16px", color: "var(--muted)", marginTop: "16px", fontWeight: 500 }}>{currentSegment.text_vi}</p>
             )}
@@ -578,9 +626,24 @@ export function ShadowingPlayer({
 
           <div style={{ padding: "24px", background: "white", borderRadius: "20px", border: "1px solid var(--line)" }}>
             <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "12px", fontWeight: 700 }}>Từ điển Mini</h3>
-            <p style={{ fontSize: "13px", color: "var(--soft)", lineHeight: 1.5, margin: 0 }}>
-              💡 Mẹo: Ở các bản cập nhật sau, bạn có thể click vào bất kỳ từ nào trong câu (ở cột giữa) để xem phiên âm IPA và nghĩa tiếng Việt ngay tại đây.
-            </p>
+            {selectedVocab ? (
+              <div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "4px" }}>
+                  <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--ink)" }}>{selectedVocab.word}</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "white", background: "#10b981", padding: "2px 6px", borderRadius: "4px" }}>{selectedVocab.level}</span>
+                </div>
+                <div style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "12px", fontStyle: "italic" }}>
+                  {selectedVocab.pos} • {selectedVocab.pronunciation_ipa}
+                </div>
+                <div style={{ fontSize: "15px", color: "var(--ink)", lineHeight: 1.5 }}>
+                  {selectedVocab.definition_vi}
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: "13px", color: "var(--soft)", lineHeight: 1.5, margin: 0 }}>
+                💡 Mẹo: Ở các bản cập nhật sau, bạn có thể click vào bất kỳ từ nào được in đậm trong câu (ở cột giữa) để xem phiên âm IPA và nghĩa tiếng Việt ngay tại đây.
+              </p>
+            )}
           </div>
         </div>
 
@@ -614,16 +677,24 @@ function KaraokeLine({
   text,
   wordDiffs,
   karaokeIdx,
+  vocabList,
+  onVocabClick,
 }: {
   text: string;
   wordDiffs: WordDiff[];
   karaokeIdx: number;
+  vocabList: any[];
+  onVocabClick: (vocab: any) => void;
 }) {
   const words = text.trim().split(/\s+/);
   return (
     <p className="ll-shadow-karaoke">
       {words.map((w, i) => {
         const diff = wordDiffs[i];
+        const cleanW = w.toLowerCase().replace(/[.,!?()[\]{}"']/g, "");
+        const matchedVocab = vocabList.find(v => v.word.toLowerCase() === cleanW);
+        const isVocab = !!matchedVocab;
+
         const cls = [
           "ll-shadow-karaoke-word",
           diff?.status === "match" && "is-match",
@@ -633,8 +704,14 @@ function KaraokeLine({
         ]
           .filter(Boolean)
           .join(" ");
+
         return (
-          <span key={i} className={cls}>
+          <span 
+            key={i} 
+            className={cls}
+            onClick={() => isVocab && onVocabClick(matchedVocab)}
+            style={isVocab ? { textDecoration: 'underline', textDecorationThickness: '2px', textUnderlineOffset: '4px', cursor: 'pointer', fontWeight: 800 } : undefined}
+          >
             {w}
             {i < words.length - 1 ? " " : ""}
           </span>
