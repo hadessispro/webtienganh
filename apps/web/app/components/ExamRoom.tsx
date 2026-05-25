@@ -377,7 +377,6 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
               title="YouTube Lofi Background"
             />
           </div>
-        </motion.div>
       )}
 
       {/* Mini Timer & Exam Content Layer */}
