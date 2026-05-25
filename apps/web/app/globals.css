@@ -15609,4 +15609,6 @@ body { overflow-x: hidden; }
   .ll-practice-v2-metrics { grid-template-columns: 1fr; }
   .ll-practice-v2-quick-grid { grid-template-columns: repeat(2, 1fr); }
 }
-.exam-option-hover:hover { background: #ecfdf5 !important; border-color: #34d399 !important; transform: translateY(-1px); } .exam-submit-btn:hover { background: #047857 !important; transform: translateY(-2px); }
+.exam-option-hover:hover { background: rgba(0,0,0,0.03) !important; transform: translateY(-1px); }
+.exam-option-hover-dark:hover { background: rgba(255,255,255,0.08) !important; transform: translateY(-1px); }
+.exam-submit-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }

@@ -379,59 +379,62 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
           </div>
       )}
 
-      {/* Mini Timer & Exam Content Layer */}
+      {/* Exam Content Layer (Main Exam Mode) */}
       <AnimatePresence>
         {isMiniMode && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 15, display: "flex", flexDirection: "column" }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 15, display: "flex", flexDirection: "column", padding: "24px", gap: "24px" }}
           >
-            {/* Top Bar with Mini Timer */}
-            <div style={{ padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-                <div style={{ fontSize: "36px", fontWeight: "bold", fontFamily: "monospace", letterSpacing: "-1px" }}>
+            {/* Floating Top Bar with Mini Timer */}
+            <div style={{ padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "24px", boxShadow: "0 10px 40px rgba(0,0,0,0.1)", border: "1px solid rgba(255,255,255,0.5)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+                <div style={{ fontSize: "36px", fontWeight: "900", fontFamily: "var(--font-ui)", letterSpacing: "-1px", color: "#111827" }}>
                   {formatTime(timeLeft)}
                 </div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button onClick={() => setIsPlaying(!isPlaying)} style={{ padding: "6px 16px", borderRadius: "100px", border: "none", background: "white", color: "black", fontWeight: "bold", cursor: "pointer" }}>
+                <div style={{ display: "flex", gap: "12px" }}>
+                  <button onClick={() => setIsPlaying(!isPlaying)} style={{ padding: "10px 24px", borderRadius: "100px", border: "none", background: "#111827", color: "white", fontWeight: "700", cursor: "pointer", fontSize: "15px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", transition: "transform 0.1s" }} onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"} onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}>
                     {isPlaying ? "Tạm dừng" : "Tiếp tục"}
                   </button>
-                  <button onClick={() => setIsMiniMode(false)} style={{ padding: "6px 16px", borderRadius: "100px", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "white", cursor: "pointer" }}>
-                    Phóng to
+                  <button onClick={() => setIsMiniMode(false)} style={{ padding: "10px 24px", borderRadius: "100px", border: "2px solid #e5e7eb", background: "transparent", color: "#4b5563", fontWeight: "700", cursor: "pointer", fontSize: "15px", transition: "all 0.2s" }} className="exam-option-hover">
+                    Phóng to Focus
                   </button>
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                <div style={{ fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>
-                  Đề thi: {examData?.title || examId}
+              <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                <div style={{ fontWeight: "700", color: "#4b5563", fontSize: "16px", background: "rgba(243,244,246,0.8)", padding: "10px 20px", borderRadius: "100px" }}>
+                  Đề thi: <span style={{ color: "#111827" }}>{examData?.title || examId}</span>
                 </div>
                 <button 
                   onClick={onExit}
-                  style={{ padding: "6px 16px", background: "rgba(239, 68, 68, 0.8)", borderRadius: "100px", border: "none", color: "white", cursor: "pointer", fontWeight: "bold" }}
+                  style={{ padding: "10px 24px", background: "#ef4444", borderRadius: "100px", border: "none", color: "white", cursor: "pointer", fontWeight: "700", fontSize: "15px", boxShadow: "0 4px 12px rgba(239,68,68,0.3)" }}
                 >
-                  Rời phòng
+                  Rời phòng thi
                 </button>
               </div>
             </div>
 
             {/* Split Screen Exam Content Area */}
-            <div style={{ flex: 1, overflow: "hidden", display: "flex", background: "white", color: "black", borderTop: "1px solid #e5e7eb" }}>
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", gap: "24px" }}>
               {loadingExam ? (
-                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", fontWeight: "500", color: "#6b7280" }}>
-                  <span className="ll-spinner" style={{ marginRight: "12px" }}></span> Đang tải đề thi...
+                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", fontWeight: "600", color: "white", background: "rgba(0,0,0,0.2)", backdropFilter: "blur(12px)", borderRadius: "32px" }}>
+                  <span className="ll-spinner" style={{ marginRight: "12px", borderTopColor: "white" }}></span> Đang tải dữ liệu đề thi...
                 </div>
               ) : examData ? (
                 <>
                   {/* Left Panel: Passage / Context */}
-                  <div style={{ flex: 1, borderRight: "2px solid #e5e7eb", padding: "40px", overflowY: "auto", background: "#f9fafb", scrollbarWidth: "thin" }}>
-                    <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "32px", color: "#111827" }}>Nội dung bài thi</h2>
+                  <div style={{ flex: 1, padding: "40px", overflowY: "auto", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(24px)", borderRadius: "32px", scrollbarWidth: "thin", boxShadow: "0 20px 40px rgba(0,0,0,0.1)", border: "1px solid rgba(255,255,255,0.6)" }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: "32px", gap: "12px" }}>
+                       <div style={{ width: "8px", height: "32px", background: "#10b981", borderRadius: "8px" }} />
+                       <h2 style={{ fontSize: "28px", fontWeight: "900", color: "#111827", margin: 0, letterSpacing: "-0.5px" }}>Nội dung bài thi</h2>
+                    </div>
                     {examData.parts?.map((part: any) => (
                       <div key={part.id} style={{ marginBottom: "48px" }}>
-                        <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#059669", marginBottom: "16px", paddingBottom: "8px", borderBottom: "2px solid #d1fae5" }}>{part.title}</h3>
+                        <h3 style={{ fontSize: "20px", fontWeight: "800", color: "#10b981", marginBottom: "20px", display: "inline-block", background: "rgba(16,185,129,0.1)", padding: "8px 16px", borderRadius: "12px" }}>{part.title}</h3>
                         {part.content && (
-                          <div style={{ padding: "32px", background: "white", borderRadius: "16px", border: "1px solid #e5e7eb", whiteSpace: "pre-wrap", lineHeight: 1.8, fontSize: "16px", color: "#374151", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
+                          <div style={{ padding: "32px", background: "white", borderRadius: "24px", border: "1px solid #f3f4f6", whiteSpace: "pre-wrap", lineHeight: 1.8, fontSize: "16px", color: "#374151", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
                             {part.content}
                           </div>
                         )}
@@ -440,35 +443,42 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                   </div>
 
                   {/* Right Panel: Questions */}
-                  <div style={{ flex: 1, padding: "40px", overflowY: "auto", scrollbarWidth: "thin", background: "white" }}>
-                    <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "32px", color: "#111827" }}>Phiếu trả lời</h2>
-                    {examData.parts?.map((part: any) => (
-                      <div key={`q-${part.id}`} style={{ marginBottom: "40px" }}>
-                        {part.questions.map((q: any) => (
-                          <div key={q.id} style={{ marginBottom: "24px", padding: "24px", background: "#f9fafb", borderRadius: "16px", border: "1px solid #f3f4f6" }}>
-                            <p style={{ fontWeight: "600", fontSize: "16px", marginBottom: "20px", color: "#1f2937", lineHeight: 1.5 }}>
-                              <span style={{ color: "#059669", marginRight: "8px", background: "#d1fae5", padding: "4px 8px", borderRadius: "6px" }}>Câu {q.order}</span> {q.question}
-                            </p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                              {q.options?.map((ans: string, i: number) => (
-                                <label key={i} style={{ display: "flex", alignItems: "center", gap: "16px", padding: "16px 20px", background: "white", border: "2px solid #e5e7eb", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s" }} className="exam-option-hover">
-                                  <input type="radio" name={`q${q.id}`} value={ans} style={{ width: "20px", height: "20px", accentColor: "#059669" }} />
-                                  <span style={{ fontSize: "15px", color: "#4b5563" }}>{ans}</span>
-                                </label>
-                              ))}
+                  <div style={{ flex: 1, padding: "40px", overflowY: "auto", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(24px)", borderRadius: "32px", scrollbarWidth: "thin", boxShadow: "0 20px 40px rgba(0,0,0,0.1)", border: "1px solid rgba(255,255,255,0.6)", display: "flex", flexDirection: "column" }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: "32px", gap: "12px" }}>
+                       <div style={{ width: "8px", height: "32px", background: "#3b82f6", borderRadius: "8px" }} />
+                       <h2 style={{ fontSize: "28px", fontWeight: "900", color: "#111827", margin: 0, letterSpacing: "-0.5px" }}>Phiếu trả lời</h2>
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      {examData.parts?.map((part: any) => (
+                        <div key={`q-${part.id}`} style={{ marginBottom: "40px" }}>
+                          {part.questions.map((q: any) => (
+                            <div key={q.id} style={{ marginBottom: "32px", padding: "32px", background: "white", borderRadius: "24px", border: "1px solid #f3f4f6", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
+                              <p style={{ fontWeight: "700", fontSize: "17px", marginBottom: "24px", color: "#1f2937", lineHeight: 1.6 }}>
+                                <span style={{ color: "white", marginRight: "12px", background: "#111827", padding: "6px 12px", borderRadius: "8px", fontSize: "14px", fontWeight: "800" }}>Câu {q.order}</span> 
+                                {q.question}
+                              </p>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
+                                {q.options?.map((ans: string, i: number) => (
+                                  <label key={i} style={{ display: "flex", alignItems: "center", gap: "16px", padding: "16px 24px", background: "#f9fafb", border: "2px solid #f3f4f6", borderRadius: "16px", cursor: "pointer", transition: "all 0.2s" }} className="exam-option-hover">
+                                    <input type="radio" name={`q${q.id}`} value={ans} style={{ width: "22px", height: "22px", accentColor: "#111827", cursor: "pointer", flexShrink: 0 }} />
+                                    <span style={{ fontSize: "16px", color: "#4b5563", fontWeight: "600", lineHeight: 1.5 }}>{ans}</span>
+                                  </label>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                          ))}
+                        </div>
+                      ))}
+                    </div>
 
-                    <button style={{ width: "100%", padding: "20px", background: "#059669", color: "white", border: "none", borderRadius: "12px", fontWeight: "bold", fontSize: "18px", cursor: "pointer", marginTop: "24px", boxShadow: "0 10px 15px -3px rgba(5, 150, 105, 0.3)", transition: "all 0.2s" }} className="exam-submit-btn">
-                      Nộp Bài
+                    <button style={{ width: "100%", padding: "24px", background: "#111827", color: "white", border: "none", borderRadius: "24px", fontWeight: "900", fontSize: "20px", cursor: "pointer", marginTop: "16px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", transition: "all 0.2s", letterSpacing: "1px", textTransform: "uppercase" }} className="exam-submit-btn">
+                      Nộp Bài Thi
                     </button>
                   </div>
                 </>
               ) : (
-                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", color: "red", fontSize: "18px" }}>Không tìm thấy dữ liệu đề thi.</div>
+                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", color: "white", fontSize: "18px", background: "rgba(0,0,0,0.2)", backdropFilter: "blur(12px)", borderRadius: "32px" }}>Không tìm thấy dữ liệu đề thi.</div>
               )}
             </div>
           </motion.div>
