@@ -58,8 +58,20 @@ interface YouTubeSearchHit {
   snippet: { title: string; channelTitle: string };
 }
 
+interface Playlist {
+  id: string;
+  title: string;
+  clips: { order: number; clip: SavedClip }[];
+}
+
 export function ShadowingView() {
   const [clips, setClips] = useState<SavedClip[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [activeTab, setActiveTab] = useState<"clips" | "playlists">("clips");
+  const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
+  const [addingClipToPlaylist, setAddingClipToPlaylist] = useState<SavedClip | null>(null);
+  const [newPlaylistTitle, setNewPlaylistTitle] = useState("");
+  
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [activeClip, setActiveClip] = useState<SavedClip | null>(null);
@@ -85,11 +97,15 @@ export function ShadowingView() {
       fetch("/api/shadowing/clips")
         .then((r) => (r.ok ? r.json() : []))
         .catch(() => []),
+      fetch("/api/shadowing/playlists")
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
       fetch("/api/profile")
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-    ]).then(([clipsData, profileData]) => {
+    ]).then(([clipsData, playlistsData, profileData]) => {
       if (Array.isArray(clipsData)) setClips(clipsData);
+      if (Array.isArray(playlistsData)) setPlaylists(playlistsData);
       if (profileData?.cefr && profileData?.primaryGoal) {
         setProfile({
           cefr: profileData.cefr,
@@ -222,6 +238,46 @@ export function ShadowingView() {
     }
   };
 
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylistTitle.trim()) return;
+    try {
+      const res = await fetch("/api/shadowing/playlists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newPlaylistTitle }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlaylists([data, ...playlists]);
+        setNewPlaylistTitle("");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddClipToPlaylist = async (playlistId: string) => {
+    if (!addingClipToPlaylist) return;
+    try {
+      const res = await fetch("/api/shadowing/playlists/clips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlistId, clipId: addingClipToPlaylist.id }),
+      });
+      if (res.ok) {
+        // Refresh playlists
+        const plRes = await fetch("/api/shadowing/playlists");
+        const plData = await plRes.json();
+        setPlaylists(plData);
+        setAddingClipToPlaylist(null);
+      } else {
+        alert("Video này có thể đã tồn tại trong danh sách phát.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // ─── Render player full-screen when active ─────────────────────
   if (activeClip) {
     return (
@@ -338,49 +394,177 @@ export function ShadowingView() {
         )}
       </section>
 
-      {/* ── Zone 4 — History ──────────────────────────────────────── */}
+      {/* ── Zone 4 — History & Playlists ──────────────────────────────────────── */}
       <section>
-        <header className="ll-shadow-section-head">
-          <h3>Clip bạn đã luyện</h3>
-          <span className="ll-shadow-section-sub">
-            {clips.length === 0
-              ? "Chưa có clip nào"
-              : `${clips.length} clip đã lưu`}
-          </span>
+        <header className="ll-shadow-section-head" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', gap: '24px', borderBottom: '2px solid var(--line)', paddingBottom: '0' }}>
+            <button 
+              onClick={() => setActiveTab("clips")}
+              style={{ padding: '0 0 12px 0', border: 'none', background: 'transparent', fontWeight: 700, fontSize: '18px', cursor: 'pointer', borderBottom: activeTab === "clips" ? '2px solid var(--ink)' : '2px solid transparent', color: activeTab === "clips" ? 'var(--ink)' : 'var(--muted)', marginBottom: '-2px' }}
+            >
+              Tất cả Clip
+            </button>
+            <button 
+              onClick={() => setActiveTab("playlists")}
+              style={{ padding: '0 0 12px 0', border: 'none', background: 'transparent', fontWeight: 700, fontSize: '18px', cursor: 'pointer', borderBottom: activeTab === "playlists" ? '2px solid var(--ink)' : '2px solid transparent', color: activeTab === "playlists" ? 'var(--ink)' : 'var(--muted)', marginBottom: '-2px' }}
+            >
+              Danh sách phát
+            </button>
+          </div>
         </header>
 
         {loading ? (
           <div className="ll-shadow-loader">
             <div className="ll-shadow-spinner" />
           </div>
-        ) : clips.length === 0 ? (
-          <p className="ll-shadow-empty">
-            Sau khi bạn luyện xong một clip, nó sẽ xuất hiện ở đây để ôn lại.
-          </p>
-        ) : (
-          <div className="ll-shadow-clip-grid">
-            {clips.map((clip, index) => (
-              <ClipCard
-                key={clip.id || `clip-${index}`}
-                clip={clip}
-                userCefr={profile?.cefr}
-                onPick={() => setActiveClip(clip)}
-                onDelete={async () => {
-                  if (!confirm("Bạn có chắc chắn muốn xóa video này khỏi lịch sử luyện tập không?")) return;
-                  try {
-                    const res = await fetch(`/api/shadowing/clips?id=${clip.id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                      setClips(prev => prev.filter(c => c.id !== clip.id));
+        ) : activeTab === "clips" ? (
+          clips.length === 0 ? (
+            <p className="ll-shadow-empty">
+              Sau khi bạn luyện xong một clip, nó sẽ xuất hiện ở đây để ôn lại.
+            </p>
+          ) : (
+            <div className="ll-shadow-clip-grid">
+              {clips.map((clip, index) => (
+                <ClipCard
+                  key={clip.id || `clip-${index}`}
+                  clip={clip}
+                  userCefr={profile?.cefr}
+                  onPick={() => setActiveClip(clip)}
+                  onDelete={async () => {
+                    if (!confirm("Bạn có chắc chắn muốn xóa video này khỏi lịch sử luyện tập không?")) return;
+                    try {
+                      const res = await fetch(`/api/shadowing/clips?id=${clip.id}`, { method: 'DELETE' });
+                      if (res.ok) {
+                        setClips(prev => prev.filter(c => c.id !== clip.id));
+                      }
+                    } catch (e) {
+                      console.error("Failed to delete clip", e);
                     }
-                  } catch (e) {
-                    console.error("Failed to delete clip", e);
-                  }
-                }}
+                  }}
+                  onAddToPlaylist={() => setAddingClipToPlaylist(clip)}
+                />
+              ))}
+            </div>
+          )
+        ) : activePlaylist ? (
+          // PLAYLIST DETAIL VIEW
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+              <button onClick={() => setActivePlaylist(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--line)', background: 'white', cursor: 'pointer', fontWeight: 600 }}>← Quay lại</button>
+              <h3 style={{ fontSize: '20px', fontWeight: 800 }}>{activePlaylist.title}</h3>
+            </div>
+            {activePlaylist.clips.length === 0 ? (
+              <p className="ll-shadow-empty">Danh sách phát này chưa có video nào.</p>
+            ) : (
+              <div className="ll-shadow-clip-grid">
+                {activePlaylist.clips.map((pc, index) => (
+                  <ClipCard
+                    key={`pl-clip-${index}`}
+                    clip={pc.clip}
+                    userCefr={profile?.cefr}
+                    onPick={() => setActiveClip(pc.clip)}
+                    onDelete={async () => {
+                       if (!confirm("Xóa khỏi danh sách phát?")) return;
+                       try {
+                         const res = await fetch(`/api/shadowing/playlists/clips?playlistId=${activePlaylist.id}&clipId=${pc.clip.id}`, { method: 'DELETE' });
+                         if (res.ok) {
+                           const plRes = await fetch("/api/shadowing/playlists");
+                           const plData = await plRes.json();
+                           setPlaylists(plData);
+                           const updatedActive = plData.find((p: any) => p.id === activePlaylist.id);
+                           setActivePlaylist(updatedActive || null);
+                         }
+                       } catch (e) {}
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          // PLAYLIST GRID
+          <div>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              <input 
+                type="text" 
+                placeholder="Tên danh sách phát mới..." 
+                value={newPlaylistTitle}
+                onChange={e => setNewPlaylistTitle(e.target.value)}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)', fontSize: '15px' }}
+                onKeyDown={e => e.key === 'Enter' && handleCreatePlaylist()}
               />
-            ))}
+              <button 
+                onClick={handleCreatePlaylist}
+                style={{ padding: '0 24px', borderRadius: '12px', background: 'var(--ink)', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+              >
+                Tạo mới
+              </button>
+            </div>
+            
+            {playlists.length === 0 ? (
+              <p className="ll-shadow-empty">Bạn chưa có danh sách phát nào.</p>
+            ) : (
+              <div className="ll-shadow-clip-grid">
+                {playlists.map((pl) => (
+                  <motion.button
+                    key={pl.id}
+                    onClick={() => setActivePlaylist(pl)}
+                    className="ll-shadow-clip"
+                    whileHover={{ y: -3 }}
+                    whileTap={{ scale: 0.99 }}
+                    style={{ textAlign: 'left', minHeight: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px' }}
+                  >
+                    <h4 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>{pl.title}</h4>
+                    <span style={{ color: 'var(--muted)', fontSize: '14px' }}>{pl.clips?.length || 0} video</span>
+                    
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm("Xóa danh sách phát này?")) return;
+                        try {
+                          const res = await fetch(`/api/shadowing/playlists?id=${pl.id}`, { method: 'DELETE' });
+                          if (res.ok) {
+                            setPlaylists(prev => prev.filter(p => p.id !== pl.id));
+                            if (activePlaylist?.id === pl.id) setActivePlaylist(null);
+                          }
+                        } catch (err) {}
+                      }}
+                      style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(0,0,0,0.1)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      ✕
+                    </button>
+                  </motion.button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>
+
+      {/* MODAL: Thêm vào Playlist */}
+      {addingClipToPlaylist && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+           <div style={{ background: 'white', padding: '24px', borderRadius: '24px', width: '90%', maxWidth: '400px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Thêm vào Danh sách phát</h3>
+              {playlists.length === 0 ? (
+                <p style={{ color: 'var(--muted)', marginBottom: '16px' }}>Chưa có danh sách phát nào. Hãy quay lại tạo danh sách phát mới nhé.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
+                  {playlists.map(pl => (
+                    <button 
+                      key={pl.id}
+                      onClick={() => handleAddClipToPlaylist(pl.id)}
+                      style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      {pl.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setAddingClipToPlaylist(null)} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: '#f3f4f6', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Hủy</button>
+           </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -394,11 +578,13 @@ function ClipCard({
   userCefr,
   onPick,
   onDelete,
+  onAddToPlaylist,
 }: {
   clip: SavedClip;
   userCefr?: CEFRLevel;
   onPick: () => void;
   onDelete: () => void;
+  onAddToPlaylist?: () => void;
 }) {
   const tooHard = useMemo(() => {
     if (!userCefr) return false;
@@ -452,6 +638,44 @@ function ClipCard({
         </div>
       </motion.button>
       
+      {/* Add to playlist button */}
+      {onAddToPlaylist && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToPlaylist();
+          }}
+          className="ll-shadow-clip-add"
+          title="Thêm vào danh sách phát"
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '40px',
+            background: 'rgba(0, 0, 0, 0.6)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '28px',
+            height: '28px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 10,
+            opacity: 0.8,
+            transition: 'all 0.2s',
+            fontSize: '18px',
+            paddingBottom: '2px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          +
+        </button>
+      )}
+
       {/* Delete button positioned absolute */}
       <button
         onClick={(e) => {

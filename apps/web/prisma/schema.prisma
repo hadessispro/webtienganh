@@ -155,6 +155,9 @@ model ShadowingClip {
   topics        String[]
   segments      Json     // [{ start, end, text_en, text_vi }]
   createdAt     DateTime @default(now())
+  
+  playlists     ShadowingPlaylistClip[]
+
   @@index([cefrEstimate])
 }
 
@@ -166,4 +169,26 @@ model ShadowingAttempt {
   scoreJson Json     // accent / fluency / similarity scores
   createdAt DateTime @default(now())
   @@index([userId, createdAt])
+}
+
+model ShadowingPlaylist {
+  id        String   @id @default(cuid())
+  userId    String?  // Optional for now until full auth
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clips     ShadowingPlaylistClip[]
+}
+
+model ShadowingPlaylistClip {
+  playlistId String
+  clipId     String
+  order      Int      @default(0)
+  
+  playlist   ShadowingPlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  clip       ShadowingClip     @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, clipId])
+  @@index([playlistId, order])
 }
