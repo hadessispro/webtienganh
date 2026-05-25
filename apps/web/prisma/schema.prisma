@@ -23,6 +23,7 @@ model User {
   placement     PlacementProfile?
   skillStates   SkillState[]
   studySessions StudySession[]
+  examSessions  ExamSession[]
   streak        Streak?
 }
 
@@ -191,4 +192,86 @@ model ShadowingPlaylistClip {
 
   @@id([playlistId, clipId])
   @@index([playlistId, order])
+}
+
+// ==========================================
+// TEST BANK (EXAMS) MODELS
+// ==========================================
+
+model ExamCategory {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String   // "IELTS Academic", "TOEIC Listening & Reading", "Cambridge PET"
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exams       Exam[]
+}
+
+model Exam {
+  id          String   @id @default(cuid())
+  categoryId  String
+  title       String   // "Cambridge IELTS 18 - Test 1"
+  description String?
+  coverImage  String?
+  durationMin Int      @default(120) // Total time in minutes
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    ExamCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  parts       ExamPart[]
+  sessions    ExamSession[]
+
+  @@index([categoryId])
+}
+
+model ExamPart {
+  id          String   @id @default(cuid())
+  examId      String
+  title       String   // "Listening Part 1", "Reading Passage 1"
+  order       Int      @default(0)
+  content     String?  @db.Text // Reading passage text or instructions
+  audioUrl    String?  // Cloud URL for listening parts
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questions   ExamQuestion[]
+
+  @@index([examId, order])
+}
+
+model ExamQuestion {
+  id          String   @id @default(cuid())
+  partId      String
+  order       Int      @default(0)
+  type        String   // "multiple_choice", "fill_in_blank", "matching"
+  question    String   @db.Text
+  options     Json?    // ["Option A", "Option B", ...]
+  answer      String   // Correct answer key or text
+  explanation String?  @db.Text // AI generated explanation
+  points      Int      @default(1)
+  
+  part        ExamPart @relation(fields: [partId], references: [id], onDelete: Cascade)
+
+  @@index([partId, order])
+}
+
+model ExamSession {
+  id          String   @id @default(cuid())
+  userId      String
+  examId      String
+  status      String   @default("in_progress") // "in_progress", "completed"
+  score       Float?
+  answers     Json     // User's submitted answers: { questionId: "answer_value" }
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([userId, examId])
 }

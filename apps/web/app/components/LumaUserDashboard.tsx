@@ -27,13 +27,14 @@ import { CoursePathGrid } from "./CoursePathGrid";
 import { CoursesViewV2 } from "./CoursesViewV2";
 import { LessonsViewV2 } from "./LessonsViewV2";
 import { PracticeViewV2 } from "./PracticeViewV2";
+import { ExamHubV2 } from "./ExamHubV2";
 import { GroupsView } from "./GroupsView";
 import { ShadowingView } from "./ShadowingView";
 import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
 
 gsap.registerPlugin(useGSAP);
 
-type LearningView = "today" | "lesson" | "courses" | "practice" | "flashcards" | "shadowing" | "schedule" | "group" | "profile";
+type LearningView = "today" | "lesson" | "courses" | "practice" | "exams" | "flashcards" | "shadowing" | "schedule" | "group" | "profile";
 
 type LineIconName =
   | LearningView
@@ -241,7 +242,8 @@ const navItems: Array<{ id: LearningView; label: string }> = [
   { id: "today", label: "Hôm nay" },
   { id: "lesson", label: "Bài học" },
   { id: "courses", label: "Khóa học" },
-  { id: "practice", label: "Đề luyện" },
+  { id: "practice", label: "Luyện phản xạ" },
+  { id: "exams", label: "Kho đề thi" },
   { id: "flashcards", label: "Flashcard" },
   { id: "shadowing", label: "Shadowing" },
   { id: "schedule", label: "Lịch học" },
@@ -2638,6 +2640,12 @@ export function LumaUserDashboard() {
         {activeView === "shadowing" ? (
           <div className="ll-page">
             <ShadowingView />
+          </div>
+        ) : null}
+
+        {activeView === "exams" ? (
+          <div className="ll-page">
+            <ExamHubV2 />
           </div>
         ) : null}
 
