@@ -1,7 +1,6 @@
-"use client";
-
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import YouTube, { YouTubePlayer } from "react-youtube";
 
 const QUOTES = [
   "Tập trung tốt hơn, đạt điểm cao hơn",
@@ -12,10 +11,10 @@ const QUOTES = [
   "Đừng mong đích đến sẽ thay đổi nếu bạn không thay đổi con đường"
 ];
 
-const AUDIO_TRACKS = [
-  { id: "lofi", name: "Lofi Radio", url: "https://lofiradio.ru/lofi_mp3_128" },
-  { id: "rain", name: "Tiếng Mưa Rơi", url: "https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg" },
-  { id: "cafe", name: "Quán Cafe", url: "https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg" }
+const PRESET_YOUTUBE_IDS = [
+  { id: "jfKfPfyJRdk", name: "Lofi Girl (Hip Hop)" },
+  { id: "4xDzrJKXOOY", name: "Synthwave Radio" },
+  { id: "7NOSDKb0HlU", name: "Chillhop Music" }
 ];
 
 export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => void }) {
@@ -29,8 +28,13 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
   const [loadingExam, setLoadingExam] = useState(true);
   
   const [quote, setQuote] = useState(QUOTES[0]);
-  const [activeAudio, setActiveAudio] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // YouTube API state
+  const [ytPlayer, setYtPlayer] = useState<YouTubePlayer | null>(null);
+  const [ytVideoId, setYtVideoId] = useState(PRESET_YOUTUBE_IDS[0].id);
+  const [ytCustomId, setYtCustomId] = useState("");
+  const [isYtPlaying, setIsYtPlaying] = useState(false);
+  const [ytVolume, setYtVolume] = useState(50);
 
   useEffect(() => {
     setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
@@ -54,16 +58,21 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
   }, [durationMinutes]);
 
   useEffect(() => {
-    if (activeAudio && audioRef.current) {
-      const track = AUDIO_TRACKS.find(t => t.id === activeAudio);
-      if (track) {
-        audioRef.current.src = track.url;
-        audioRef.current.play().catch(e => console.log("Audio play failed", e));
-      }
-    } else if (!activeAudio && audioRef.current) {
-      audioRef.current.pause();
+    if (ytPlayer) {
+      ytPlayer.setVolume(ytVolume);
     }
-  }, [activeAudio]);
+  }, [ytVolume, ytPlayer]);
+
+  const toggleYtPlay = () => {
+    if (!ytPlayer) return;
+    if (isYtPlaying) {
+      ytPlayer.pauseVideo();
+      setIsYtPlaying(false);
+    } else {
+      ytPlayer.playVideo();
+      setIsYtPlaying(true);
+    }
+  };
 
   // Backgrounds for focus mode
   const backgrounds = [
@@ -168,38 +177,81 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
         )}
       </AnimatePresence>
 
-      {/* Native Audio Player Widget */}
+      {/* YouTube Iframe Audio Player Widget */}
       {showMusic && (
-        <div style={{ position: "absolute", bottom: "24px", right: "24px", zIndex: 20, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(16px)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)", width: "320px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <span style={{ fontWeight: "bold", fontSize: "14px" }}>🎵 Ambient Sound</span>
+        <div style={{ position: "absolute", bottom: "24px", right: "24px", zIndex: 20, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", padding: "20px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.15)", width: "340px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <span style={{ fontWeight: "bold", fontSize: "16px", color: "white" }}>🎵 YouTube Lofi API</span>
             <button onClick={() => setShowMusic(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: "12px", cursor: "pointer" }}>Đóng</button>
           </div>
           
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {AUDIO_TRACKS.map(track => (
-              <button
-                key={track.id}
-                onClick={() => setActiveAudio(activeAudio === track.id ? null : track.id)}
-                style={{
-                  padding: "10px", borderRadius: "8px", border: "none", cursor: "pointer", textAlign: "left",
-                  background: activeAudio === track.id ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
-                  color: activeAudio === track.id ? "white" : "rgba(255,255,255,0.7)",
-                  fontWeight: activeAudio === track.id ? "bold" : "normal",
-                  display: "flex", justifyContent: "space-between"
-                }}
-              >
-                <span>{track.name}</span>
-                {activeAudio === track.id && <span style={{ fontSize: "12px" }}>Đang phát...</span>}
-              </button>
-            ))}
-          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+              {PRESET_YOUTUBE_IDS.map(preset => (
+                <button
+                  key={preset.id}
+                  onClick={() => { setYtVideoId(preset.id); setIsYtPlaying(true); }}
+                  style={{
+                    padding: "6px 12px", borderRadius: "8px", border: "none", cursor: "pointer", whiteSpace: "nowrap",
+                    background: ytVideoId === preset.id ? "#10b981" : "rgba(255,255,255,0.1)",
+                    color: "white", fontSize: "12px", fontWeight: "600"
+                  }}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
 
-          <audio ref={audioRef} loop style={{ display: "none" }} />
+            <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+              <input 
+                type="text" 
+                placeholder="Dán YouTube ID..." 
+                value={ytCustomId}
+                onChange={e => setYtCustomId(e.target.value)}
+                style={{ flex: 1, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "6px", padding: "8px", color: "white", fontSize: "12px" }}
+              />
+              <button 
+                onClick={() => { if(ytCustomId) { setYtVideoId(ytCustomId); setIsYtPlaying(true); } }}
+                style={{ background: "white", color: "black", border: "none", padding: "0 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}
+              >
+                Mở
+              </button>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px", background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "12px" }}>
+              <button 
+                onClick={toggleYtPlay}
+                style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#10b981", color: "white", border: "none", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "16px" }}
+              >
+                {isYtPlaying ? "⏸" : "▶"}
+              </button>
+              <input 
+                type="range" min="0" max="100" value={ytVolume} onChange={e => setYtVolume(Number(e.target.value))}
+                style={{ flex: 1, accentColor: "#10b981" }}
+              />
+            </div>
+          </div>
           
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginTop: "12px", textAlign: "center", marginBottom: 0 }}>
-            Tiếng ồn trắng (White noise) giúp tăng khả năng tập trung
+          <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "16px", textAlign: "center", marginBottom: 0 }}>
+            Sử dụng YouTube Iframe API. Video bị ẩn.
           </p>
+
+          {/* Hidden YouTube Player */}
+          <div style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0, overflow: "hidden" }}>
+            <YouTube 
+              videoId={ytVideoId}
+              opts={{
+                playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, modestbranding: 1 }
+              }}
+              onReady={(event) => {
+                setYtPlayer(event.target);
+                event.target.setVolume(ytVolume);
+                if (isYtPlaying) event.target.playVideo();
+              }}
+              onPlay={() => setIsYtPlaying(true)}
+              onPause={() => setIsYtPlaying(false)}
+            />
+          </div>
         </div>
       )}
 
