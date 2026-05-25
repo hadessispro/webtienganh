@@ -8,40 +8,41 @@ export function ShadowingView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeClip, setActiveClip] = useState<any | null>(null);
   const [isProcessingNew, setIsProcessingNew] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/shadowing/clips")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setClips(data);
-        setLoading(false);
-      });
+    Promise.all([
+      fetch("/api/shadowing/clips").then(res => res.json()),
+      fetch("/api/profile").then(res => res.json())
+    ]).then(([clipsData, profileData]) => {
+      if (Array.isArray(clipsData)) setClips(clipsData);
+      if (profileData && profileData.cefr) setProfile(profileData);
+      setLoading(false);
+    });
   }, []);
 
-  const handleSearch = async () => {
-    if (!searchQuery) return;
+  const handleSearch = async (queryToSearch?: string) => {
+    const q = queryToSearch || searchQuery;
+    if (!q) return;
     setIsProcessingNew(true);
     try {
-      // 1. Search YouTube
-      const searchRes = await fetch(`/api/youtube/search?q=${encodeURIComponent(searchQuery)}`);
+      const searchRes = await fetch(`/api/youtube/search?q=${encodeURIComponent(q + " english conversation subtitle")}`);
       const searchData = await searchRes.json();
       
       if (searchData.length > 0) {
         const video = searchData[0];
         const videoId = video.id.videoId;
         
-        // 2. Fetch transcript
         const transcriptRes = await fetch(`/api/youtube/transcript?videoId=${videoId}`);
         const segments = await transcriptRes.json();
         
         if (Array.isArray(segments) && segments.length > 0) {
-          // 3. Save to DB
           const clipData = {
             youtubeId: videoId,
             title: video.snippet.title,
             durationSec: segments[segments.length - 1].end,
-            cefrEstimate: "B1",
-            topics: ["Custom Search"],
+            cefrEstimate: profile?.cefr || "B1",
+            topics: [q],
             segments
           };
           
@@ -87,38 +88,69 @@ export function ShadowingView() {
       </header>
 
       <div className="ll-glass" style={{ display: "flex", gap: "16px", padding: "16px", borderRadius: "16px", marginBottom: "40px", alignItems: "center" }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Dán link YouTube hoặc tìm kiếm chủ đề..." 
-            style={{ width: "100%", padding: "16px 20px", background: "var(--page)", border: "1px solid var(--line)", borderRadius: "12px", outline: "none", color: "var(--ink)", fontSize: "15px" }}
-          />
-        </div>
+        <input 
+          type="text" 
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          placeholder="Dán link YouTube hoặc tìm kiếm chủ đề bạn muốn luyện tập..." 
+          style={{ flex: 1, padding: "16px 20px", background: "var(--page)", border: "1px solid var(--line)", borderRadius: "12px", outline: "none", color: "var(--ink)", fontSize: "16px", minWidth: 0 }}
+        />
         <button 
-          onClick={handleSearch}
+          onClick={() => handleSearch()}
           disabled={isProcessingNew}
           className="primary-button"
-          style={{ padding: "0 32px", height: "54px", opacity: isProcessingNew ? 0.7 : 1, borderRadius: "12px", fontSize: "15px" }}
+          style={{ padding: "0 32px", height: "54px", opacity: isProcessingNew ? 0.7 : 1, borderRadius: "12px", fontSize: "15px", flexShrink: 0 }}
         >
           {isProcessingNew ? "Đang xử lý..." : "Bắt đầu học"}
         </button>
       </div>
 
-      <h2 style={{ fontSize: "20px", marginBottom: "20px", color: "var(--ink)", paddingLeft: "8px" }}>Clip được đề xuất</h2>
-      
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: "60px" }}>
           <div style={{ width: "32px", height: "32px", border: "3px solid var(--line)", borderTopColor: "var(--blue)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
         </div>
       ) : clips.length === 0 ? (
-        <div className="ll-glass" style={{ textAlign: "center", padding: "64px 32px", borderRadius: "24px", color: "var(--soft)" }}>
-          Chưa có clip nào. Hãy dán một link YouTube bất kỳ để bắt đầu!
+        <div>
+          <h2 style={{ fontSize: "20px", marginBottom: "8px", color: "var(--ink)", paddingLeft: "8px" }}>Gợi ý cho bạn</h2>
+          <p style={{ paddingLeft: "8px", color: "var(--muted)", marginBottom: "24px" }}>Dựa trên trình độ <strong style={{color: "var(--blue)"}}>{profile?.cefr || 'A2'}</strong> và mục tiêu <strong style={{color: "var(--blue)"}}>{profile?.primaryGoal === 'work' ? 'Công việc' : 'Giao tiếp'}</strong> của bạn</p>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
+            {[
+              { title: "Business Meetings", desc: "Giao tiếp trong phòng họp", icon: "💼" },
+              { title: "Job Interview", desc: "Trả lời phỏng vấn trôi chảy", icon: "🤝" },
+              { title: "TED Talks", desc: "Luyện giọng điệu thuyết trình", icon: "🎤" },
+              { title: "Daily Conversation", desc: "Giao tiếp hàng ngày tự nhiên", icon: "☕" }
+            ].map(topic => (
+              <div 
+                key={topic.title}
+                className="ll-glass"
+                style={{ padding: "24px", borderRadius: "20px", cursor: "pointer", transition: "all 0.2s", display: "flex", flexDirection: "column", gap: "12px" }}
+                onClick={() => {
+                  setSearchQuery(topic.title);
+                  handleSearch(topic.title);
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.borderColor = "var(--blue)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.borderColor = "var(--line)";
+                }}
+              >
+                <div style={{ fontSize: "32px" }}>{topic.icon}</div>
+                <h3 style={{ fontSize: "18px", margin: 0, color: "var(--ink)" }}>{topic.title}</h3>
+                <p style={{ margin: 0, color: "var(--soft)", fontSize: "14px" }}>{topic.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
-          {clips.map(clip => (
+        <>
+          <h2 style={{ fontSize: "20px", marginBottom: "20px", color: "var(--ink)", paddingLeft: "8px" }}>Clip bạn đã luyện tập</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
+            {clips.map(clip => (
             <div 
               key={clip.id} 
               className="ll-glass"
