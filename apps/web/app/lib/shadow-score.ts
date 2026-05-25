@@ -75,3 +75,120 @@ export function scoreShadowingAttempt(targetText: string, userText: string): Sha
     diff
   };
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   ADDITIONS — Auto-Loop + word-level inline diff (2026-05-25)
+   These extend the original scoreShadowingAttempt without changing
+   its behavior. Older callers still work.
+   ════════════════════════════════════════════════════════════════════ */
+
+export interface WordDiff {
+  /** Target word as it appears in the script */
+  target: string;
+  /** Status after comparing user's spoken text */
+  status: "match" | "missed" | "approx";
+  /** What the user actually said for this slot, when approx */
+  spoken?: string;
+}
+
+/**
+ * Word-level diff aligned with the ORIGINAL target sentence.
+ *
+ * Unlike `diff` in ShadowScore which interleaves extras, this returns
+ * one entry PER target word so the UI can render the script inline
+ * with green/red highlights per word.
+ *
+ * `approx` means the user said something CLOSE to the target word
+ * (>= 0.6 similarity) but not exact — for pronunciation errors. The UI
+ * can show this in yellow rather than red.
+ */
+export function scoreWordsInline(
+  targetText: string,
+  userText: string,
+): WordDiff[] {
+  const cleanTarget = cleanText(targetText);
+  const cleanUser = cleanText(userText);
+  const tWords = cleanTarget.split(/\s+/).filter(Boolean);
+  const uWords = cleanUser.split(/\s+/).filter(Boolean);
+  if (tWords.length === 0) return [];
+
+  const out: WordDiff[] = [];
+  let uIdx = 0;
+
+  for (let i = 0; i < tWords.length; i++) {
+    const t = tWords[i];
+
+    // 1) exact match within next 3 user words
+    let matchedAt = -1;
+    const lookAhead = Math.min(uIdx + 3, uWords.length);
+    for (let j = uIdx; j < lookAhead; j++) {
+      if (uWords[j] === t) {
+        matchedAt = j;
+        break;
+      }
+    }
+    if (matchedAt !== -1) {
+      out.push({ target: t, status: "match" });
+      uIdx = matchedAt + 1;
+      continue;
+    }
+
+    // 2) fuzzy match: any user word within 3 ahead with >= 0.6 similarity
+    let approxAt = -1;
+    let bestSim = 0;
+    let bestWord: string | undefined;
+    for (let j = uIdx; j < lookAhead; j++) {
+      const sim = simpleSimilarity(t, uWords[j]);
+      if (sim >= 0.6 && sim > bestSim) {
+        bestSim = sim;
+        approxAt = j;
+        bestWord = uWords[j];
+      }
+    }
+    if (approxAt !== -1) {
+      out.push({ target: t, status: "approx", spoken: bestWord });
+      uIdx = approxAt + 1;
+      continue;
+    }
+
+    // 3) missed
+    out.push({ target: t, status: "missed" });
+  }
+
+  return out;
+}
+
+/**
+ * Bigram-overlap similarity (same idea as string-similarity dice).
+ * Avoids importing another helper since we already have the lib.
+ */
+function simpleSimilarity(a: string, b: string): number {
+  if (a === b) return 1;
+  if (a.length < 2 || b.length < 2) return 0;
+  const ba = bigrams(a);
+  const bb = bigrams(b);
+  let common = 0;
+  for (const x of ba) if (bb.has(x)) common++;
+  return (2 * common) / (ba.size + bb.size);
+}
+
+function bigrams(s: string): Set<string> {
+  const out = new Set<string>();
+  for (let i = 0; i < s.length - 1; i++) out.add(s.slice(i, i + 2));
+  return out;
+}
+
+/**
+ * Returns whether the user can move on automatically: overall score
+ * above threshold AND no obvious dropouts (more than 30% missed words).
+ */
+export function shouldAdvance(
+  score: ShadowScore,
+  wordDiffs: WordDiff[],
+  threshold = 70,
+): boolean {
+  if (score.overall < threshold) return false;
+  const missedRate =
+    wordDiffs.filter((w) => w.status === "missed").length / Math.max(1, wordDiffs.length);
+  return missedRate <= 0.3;
+}

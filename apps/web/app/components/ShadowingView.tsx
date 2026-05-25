@@ -33,6 +33,7 @@ import {
   type ShadowingTopic,
 } from "../lib/shadowing-topics";
 import { loadProfileFromStorage } from "../lib/recommend-engine";
+import { buildVocabBoost } from "../lib/shadowing-link";
 import type { CEFRLevel } from "../placement/_lib/types";
 
 interface SavedClip {
@@ -136,11 +137,18 @@ export function ShadowingView() {
     setIsProcessing(true);
     setErrorMsg(null);
     try {
-      // Augment with profile context so YouTube returns better matches
-      const querySuffix =
-        topic?.searchQuery ??
-        `${rawQuery} english ${profile?.cefr === "A1" || profile?.cefr === "A2" ? "beginner slow" : ""} conversation`;
-      const fullQuery = topic ? topic.searchQuery : querySuffix;
+      // Augment with profile context AND user's recent vocab so YouTube
+      // returns videos containing words the user is actively studying.
+      // (e.g. learning "budget" + "meeting" right now → favor clips with
+      // those words.)
+      const vocabBoost = buildVocabBoost();
+      const baseQuery = topic ? topic.searchQuery : rawQuery;
+      const cefrHint =
+        profile?.cefr === "A1" || profile?.cefr === "A2" ? "beginner slow" : "";
+      const fullQuery = [vocabBoost, baseQuery, cefrHint, "english"]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
 
       const searchRes = await fetch(
         `/api/youtube/search?q=${encodeURIComponent(fullQuery)}`,
