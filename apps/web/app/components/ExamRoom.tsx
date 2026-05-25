@@ -22,6 +22,19 @@ function extractYoutubeId(input: string) {
   return (match && match[2].length === 11) ? match[2] : input.trim();
 }
 
+const MusicWave = ({ isPlaying }: { isPlaying: boolean }) => (
+  <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "18px" }}>
+    {[0.2, 0.4, 0.1, 0.5, 0.3].map((delay, i) => (
+      <motion.div
+        key={i}
+        animate={isPlaying ? { scaleY: [0.3, 1, 0.3] } : { scaleY: 0.1 }}
+        transition={isPlaying ? { duration: 0.9, repeat: Infinity, ease: "easeInOut", delay } : { duration: 0.3 }}
+        style={{ width: "4px", height: "100%", background: "#10b981", borderRadius: "99px", transformOrigin: "bottom" }}
+      />
+    ))}
+  </div>
+);
+
 export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => void }) {
   const [durationMinutes, setDurationMinutes] = useState(25);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -48,12 +61,18 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
     fetch(`/api/exams/${examId}`)
       .then(res => res.json())
       .then(data => {
-        setExamData(data);
-        if (data.durationMin) setDurationMinutes(data.durationMin);
+        if (data.error || !data.parts) {
+          console.error("Exam error:", data.error);
+          setExamData(null);
+        } else {
+          setExamData(data);
+          if (data.durationMin) setDurationMinutes(data.durationMin);
+        }
         setLoadingExam(false);
       })
       .catch(err => {
         console.error("Failed to load exam", err);
+        setExamData(null);
         setLoadingExam(false);
       });
   }, [examId]);
@@ -186,10 +205,25 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
 
       {/* YouTube Iframe Audio Player Widget */}
       {showMusic && (
-        <div style={{ position: "absolute", bottom: "24px", right: "24px", zIndex: 20, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", padding: "20px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.15)", width: "340px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <span style={{ fontWeight: "bold", fontSize: "16px", color: "white" }}>🎵 YouTube Lofi API</span>
-            <button onClick={() => setShowMusic(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: "12px", cursor: "pointer" }}>Đóng</button>
+        <motion.div 
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          style={{ position: "absolute", bottom: "32px", right: "32px", zIndex: 20, background: "rgba(17, 24, 39, 0.85)", backdropFilter: "blur(20px)", padding: "24px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.1)", width: "360px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #10b981, #059669)", display: "flex", justifyContent: "center", alignItems: "center", color: "white", fontSize: "16px", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.4)" }}>
+                🎵
+              </div>
+              <div>
+                <span style={{ fontWeight: "bold", fontSize: "15px", color: "white", display: "block", letterSpacing: "0.5px" }}>YouTube Lofi Player</span>
+                <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginTop: "2px", display: "block" }}>{isYtPlaying ? "Đang phát nhạc..." : "Đã tạm dừng"}</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <MusicWave isPlaying={isYtPlaying} />
+              <button onClick={() => setShowMusic(false)} style={{ background: "rgba(255,255,255,0.1)", width: "28px", height: "28px", borderRadius: "50%", border: "none", color: "white", fontSize: "16px", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", transition: "all 0.2s" }} className="exam-option-hover">×</button>
+            </div>
           </div>
           
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -199,10 +233,13 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                   key={preset.id}
                   onClick={() => { setYtVideoId(preset.id); setIsYtPlaying(true); }}
                   style={{
-                    padding: "8px 12px", borderRadius: "8px", border: "none", cursor: "pointer", whiteSpace: "nowrap",
-                    background: ytVideoId === preset.id ? "#10b981" : "rgba(255,255,255,0.1)",
-                    color: "white", fontSize: "13px", fontWeight: "600", transition: "all 0.2s"
+                    padding: "8px 14px", borderRadius: "12px", border: "1px solid", cursor: "pointer", whiteSpace: "nowrap",
+                    background: ytVideoId === preset.id ? "rgba(16, 185, 129, 0.2)" : "rgba(255,255,255,0.05)",
+                    borderColor: ytVideoId === preset.id ? "#10b981" : "transparent",
+                    color: ytVideoId === preset.id ? "#10b981" : "rgba(255,255,255,0.7)", 
+                    fontSize: "13px", fontWeight: "600", transition: "all 0.2s"
                   }}
+                  className="exam-option-hover"
                 >
                   {preset.name}
                 </button>
@@ -215,7 +252,7 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                 placeholder="Dán Link hoặc ID YouTube..." 
                 value={ytCustomId}
                 onChange={e => setYtCustomId(e.target.value)}
-                style={{ flex: 1, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", padding: "10px", color: "white", fontSize: "13px", outline: "none" }}
+                style={{ flex: 1, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", padding: "10px 14px", color: "white", fontSize: "13px", outline: "none", transition: "all 0.2s" }}
               />
               <button 
                 onClick={() => { 
@@ -224,22 +261,26 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                     setIsYtPlaying(true); 
                   } 
                 }}
-                style={{ background: "white", color: "black", border: "none", padding: "0 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" }}
+                style={{ background: "#10b981", color: "white", border: "none", padding: "0 18px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)" }}
+                className="exam-submit-btn"
               >
                 Phát
               </button>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px", background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px", background: "rgba(0,0,0,0.2)", padding: "12px 16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
               <button 
                 onClick={toggleYtPlay}
-                style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#10b981", color: "white", border: "none", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "16px" }}
+                style={{ width: "44px", height: "44px", borderRadius: "50%", background: "white", color: "#111827", border: "none", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", boxShadow: "0 4px 12px rgba(255,255,255,0.2)", transition: "transform 0.1s" }}
+                onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"}
+                onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
               >
                 {isYtPlaying ? "⏸" : "▶"}
               </button>
               <input 
                 type="range" min="0" max="100" value={ytVolume} onChange={e => setYtVolume(Number(e.target.value))}
-                style={{ flex: 1, accentColor: "#10b981" }}
+                style={{ flex: 1, accentColor: "#10b981", height: "6px", borderRadius: "4px" }}
               />
             </div>
           </div>
@@ -258,7 +299,7 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
               title="YouTube Lofi Background"
             />
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Mini Timer & Exam Content Layer */}
@@ -309,7 +350,7 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                   {/* Left Panel: Passage / Context */}
                   <div style={{ flex: 1, borderRight: "2px solid #e5e7eb", padding: "40px", overflowY: "auto", background: "#f9fafb", scrollbarWidth: "thin" }}>
                     <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "32px", color: "#111827" }}>Nội dung bài thi</h2>
-                    {examData.parts.map((part: any) => (
+                    {examData.parts?.map((part: any) => (
                       <div key={part.id} style={{ marginBottom: "48px" }}>
                         <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#059669", marginBottom: "16px", paddingBottom: "8px", borderBottom: "2px solid #d1fae5" }}>{part.title}</h3>
                         {part.content && (
@@ -324,7 +365,7 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                   {/* Right Panel: Questions */}
                   <div style={{ flex: 1, padding: "40px", overflowY: "auto", scrollbarWidth: "thin", background: "white" }}>
                     <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "32px", color: "#111827" }}>Phiếu trả lời</h2>
-                    {examData.parts.map((part: any) => (
+                    {examData.parts?.map((part: any) => (
                       <div key={`q-${part.id}`} style={{ marginBottom: "40px" }}>
                         {part.questions.map((q: any) => (
                           <div key={q.id} style={{ marginBottom: "24px", padding: "24px", background: "#f9fafb", borderRadius: "16px", border: "1px solid #f3f4f6" }}>
