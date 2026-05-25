@@ -505,9 +505,11 @@ export function ShadowingView() {
               <p className="ll-shadow-empty">Bạn chưa có danh sách phát nào.</p>
             ) : (
               <div className="ll-shadow-clip-grid">
-                {playlists.map((pl) => (
+                {playlists.map((pl: Playlist) => {
+                  const playlistId = pl.id;
+                  return (
                   <motion.button
-                    key={pl.id}
+                    key={playlistId}
                     onClick={() => setActivePlaylist(pl)}
                     className="ll-shadow-clip"
                     whileHover={{ y: -3 }}
@@ -522,10 +524,9 @@ export function ShadowingView() {
                         e.stopPropagation();
                         if (!confirm("Xóa danh sách phát này?")) return;
                         try {
-                          const res = await fetch(`/api/shadowing/playlists?id=${pl.id}`, { method: 'DELETE' });
+                          const res = await fetch(`/api/shadowing/playlists?id=${playlistId}`, { method: 'DELETE' });
                           if (res.ok) {
-                            setPlaylists(prev => prev.filter(p => p.id !== pl.id));
-                            if (activePlaylist?.id === pl.id) setActivePlaylist(null);
+                            setPlaylists(prev => prev.filter((p: Playlist) => p.id !== playlistId));
                           }
                         } catch (err) {}
                       }}
@@ -534,7 +535,8 @@ export function ShadowingView() {
                       ✕
                     </button>
                   </motion.button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
