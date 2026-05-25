@@ -114,17 +114,19 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
       }}
     >
       {/* Top Bar */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 20 }}>
-        <div style={{ fontWeight: "bold", fontSize: "20px", letterSpacing: "1px" }}>
-          Focus Workspace <span style={{ opacity: 0.5, fontWeight: "normal", fontSize: "14px", marginLeft: "8px" }}>Phòng Thi Ảo</span>
+      {!isMiniMode && (
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 20 }}>
+          <div style={{ fontWeight: "bold", fontSize: "20px", letterSpacing: "1px" }}>
+            Focus Workspace <span style={{ opacity: 0.5, fontWeight: "normal", fontSize: "14px", marginLeft: "8px" }}>Phòng Thi Ảo</span>
+          </div>
+          <button 
+            onClick={onExit}
+            style={{ padding: "8px 16px", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", borderRadius: "8px", border: "none", color: "white", cursor: "pointer", fontWeight: "500" }}
+          >
+            Rời phòng
+          </button>
         </div>
-        <button 
-          onClick={onExit}
-          style={{ padding: "8px 16px", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", borderRadius: "8px", border: "none", color: "white", cursor: "pointer", fontWeight: "500" }}
-        >
-          Rời phòng
-        </button>
-      </div>
+      )}
 
       {/* Main Focus Area (Full Screen) */}
       <AnimatePresence>
@@ -283,8 +285,16 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                   </button>
                 </div>
               </div>
-              <div style={{ fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>
-                Đề thi: {examData?.title || examId}
+              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                <div style={{ fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>
+                  Đề thi: {examData?.title || examId}
+                </div>
+                <button 
+                  onClick={onExit}
+                  style={{ padding: "6px 16px", background: "rgba(239, 68, 68, 0.8)", borderRadius: "100px", border: "none", color: "white", cursor: "pointer", fontWeight: "bold" }}
+                >
+                  Rời phòng
+                </button>
               </div>
             </div>
 
