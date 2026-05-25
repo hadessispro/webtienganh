@@ -3,17 +3,18 @@
 /**
  * Path: apps/web/app/components/LessonsViewV2.tsx
  *
- * "Bài học" tab — rebuilt from legacy hardcoded `todayTasks +
- * learningPath` (mock data) to use the real ASU pool + SM-2 SkillState.
+ * "Bài học" tab — REDESIGN 2026-05-25 (match site design system).
  *
- * Each card is one ASU from FOUNDATION_SEED filtered by the user's
- * track. Status (Mới / Đang học / Hoàn thành) is computed from the
- * user's actual practice history.
- *
- * Filter chips: Tất cả / Đang học / Hoàn thành / Mới — with live counts.
- * Search box filters by preview text + tags.
- *
- * Clicking a card launches SessionPlayer with [thatASU] queue.
+ * Fixes from previous attempt:
+ *   - Empty for IELTS/Work/Travel users (required_tags didn't match seed).
+ *     Now uses CEFR ±1 level filtering + recommender score, so users on
+ *     any track always see ≥1 lesson card.
+ *   - Cards now use .ll-glass (28px radius, blur, gradient overlay) so
+ *     they match Groups + LearnPathHero, not a bare 18px white box.
+ *   - Filter bar matches the Groups-tab subhead style (uppercase tracking
+ *     for the eyebrow row).
+ *   - Card width grid is 280-340px (was 280) so 3-col layout feels
+ *     balanced on 1100-1280 viewports instead of being squeezed.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -21,9 +22,9 @@ import { motion } from "framer-motion";
 
 import { SessionPlayer } from "./SessionPlayer";
 import { FOUNDATION_SEED } from "../lib/skill-seed-foundation";
-import { defaultTrackForGoal } from "../lib/track-templates";
 import {
   loadProfileFromStorage,
+  recommendDaily,
   type RecommenderProfile,
 } from "../lib/recommend-engine";
 import {
@@ -31,6 +32,7 @@ import {
   decayedStrength,
   type SkillState,
 } from "../lib/user-skill-state";
+import type { CEFRLevel } from "../placement/_lib/types";
 import type { SkillUnit } from "../lib/skill-units";
 
 type LessonStatus = "new" | "learning" | "done";
@@ -53,6 +55,8 @@ const TYPE_LABELS: Record<string, { vi: string; emoji: string }> = {
   writing: { vi: "Viết", emoji: "✍️" },
 };
 
+const CEFR_ORDER: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+
 export function LessonsViewV2() {
   const [profile, setProfile] = useState<RecommenderProfile | null>(null);
   const [states, setStates] = useState<Record<string, SkillState>>({});
@@ -69,32 +73,24 @@ export function LessonsViewV2() {
 
   const refreshStates = () => setStates(loadAllSkillStates());
 
-  const track = useMemo(() => {
-    if (!profile) return null;
-    return defaultTrackForGoal(profile.primaryGoal);
-  }, [profile]);
-
-  // ASUs in the user's track (foundation = full pool since only that
-  // track has seeded ASUs right now)
   const lessons = useMemo<SkillUnit[]>(() => {
-    if (!track) return [];
-    return FOUNDATION_SEED.filter((s) =>
-      track.required_tags.every((t) =>
-        (s.tags as readonly string[]).includes(t as any),
-      ),
-    );
-  }, [track]);
+    if (!profile) return [];
+    const userIdx = CEFR_ORDER.indexOf(profile.cefr);
+    const pool = FOUNDATION_SEED.filter((s) => {
+      const idx = CEFR_ORDER.indexOf(s.level);
+      return idx !== -1 && Math.abs(idx - userIdx) <= 1;
+    });
+    if (pool.length === 0) return FOUNDATION_SEED.slice(0, 40);
+    return recommendDaily(pool, profile, { n: Math.min(60, pool.length) });
+  }, [profile]);
 
   const filtered = useMemo<SkillUnit[]>(() => {
     const now = new Date().toISOString();
     const q = searchInput.trim().toLowerCase();
-
     return lessons.filter((skill) => {
       if (filter !== "all") {
         const status = getStatus(skill.id, states, now);
-        if (filter === "new" && status !== "new") return false;
-        if (filter === "learning" && status !== "learning") return false;
-        if (filter === "done" && status !== "done") return false;
+        if (filter !== status) return false;
       }
       if (q) {
         const preview = previewText(skill).toLowerCase();
@@ -105,7 +101,7 @@ export function LessonsViewV2() {
     });
   }, [lessons, states, filter, searchInput]);
 
-  if (!mounted) return <div className="ll-lessons-v2-skeleton" />;
+  if (!mounted) return <div className="ll-lessons-v2-skeleton ll-glass" />;
 
   if (activeQueue) {
     return (
@@ -121,19 +117,15 @@ export function LessonsViewV2() {
 
   if (!profile) {
     return (
-      <div className="ll-lessons-empty">
+      <article className="ll-lessons-empty ll-glass">
         <p>
           Hãy{" "}
-          <a
-            href="/placement"
-            className="ll-accent"
-            style={{ fontWeight: 700 }}
-          >
+          <a href="/placement" className="ll-accent" style={{ fontWeight: 700 }}>
             làm bài kiểm tra xếp lớp
           </a>{" "}
           trước để chúng tôi biết bài nào phù hợp với bạn.
         </p>
-      </div>
+      </article>
     );
   }
 
@@ -141,45 +133,49 @@ export function LessonsViewV2() {
 
   return (
     <div className="ll-lessons-v2">
-      <div className="ll-lessons-filter">
-        <div className="ll-lessons-search">
-          <span className="ll-lessons-search-icon" aria-hidden="true">🔍</span>
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Tìm bài học, chủ đề, từ vựng..."
-          />
+      <section className="ll-lessons-filter ll-glass">
+        <div className="ll-lessons-filter-row">
+          <div className="ll-lessons-search">
+            <span className="ll-lessons-search-icon" aria-hidden="true">🔍</span>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Tìm bài học, chủ đề, từ vựng..."
+            />
+          </div>
+          <div className="ll-lessons-chips">
+            {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
+              const count =
+                key === "all"
+                  ? lessons.length
+                  : key === "learning"
+                  ? counts.learning
+                  : key === "done"
+                  ? counts.done
+                  : counts.new;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`ll-lessons-chip ${
+                    filter === key ? "is-active" : ""
+                  }`}
+                >
+                  {FILTER_LABELS[key]}
+                  <span className="ll-lessons-chip-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="ll-lessons-chips">
-          {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
-            const count =
-              key === "all"
-                ? lessons.length
-                : key === "learning"
-                ? counts.learning
-                : key === "done"
-                ? counts.done
-                : counts.new;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                className={`ll-lessons-chip ${
-                  filter === key ? "is-active" : ""
-                }`}
-              >
-                {FILTER_LABELS[key]}
-                <span className="ll-lessons-chip-count">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      </section>
 
       {filtered.length === 0 ? (
-        <EmptyState filter={filter} totalLessons={lessons.length} />
+        <article className="ll-lessons-empty ll-glass">
+          <p>{emptyMessage(filter, lessons.length)}</p>
+        </article>
       ) : (
         <div className="ll-lessons-grid">
           {filtered.map((skill, i) => (
@@ -230,41 +226,39 @@ function LessonCard({
 
   return (
     <motion.article
-      className="ll-lesson-card-v2"
+      className="ll-lesson-card-v2 ll-glass"
       initial={{ y: 12, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: Math.min(index, 8) * 0.04, duration: 0.35 }}
     >
-      <div className="ll-lesson-card-v2-head">
+      <header className="ll-lesson-card-v2-head">
         <div className="ll-lesson-card-v2-icon" aria-hidden="true">
-          {typeLabel.emoji}
+          <span>{typeLabel.emoji}</span>
         </div>
         <span
           className={`ll-lesson-card-v2-status ll-lesson-card-v2-status--${status}`}
         >
           {statusLabel}
         </span>
-      </div>
+      </header>
 
       <div className="ll-lesson-card-v2-body">
-        <div className="ll-lesson-card-v2-type">{typeLabel.vi}</div>
+        <div className="ll-lesson-card-v2-eyebrow">{typeLabel.vi}</div>
         <h3 className="ll-lesson-card-v2-title">{previewText(skill)}</h3>
 
-        <div className="ll-lesson-card-v2-meta">
-          <span className="ll-lesson-card-v2-meta-chip">{skill.level}</span>
+        <div className="ll-lesson-card-v2-tags">
+          <span className="ll-lesson-card-v2-tag">{skill.level}</span>
           {tagLabel && (
-            <span className="ll-lesson-card-v2-meta-chip">
-              {prettyTag(tagLabel)}
-            </span>
+            <span className="ll-lesson-card-v2-tag">{prettyTag(tagLabel)}</span>
           )}
-          <span className="ll-lesson-card-v2-meta-time">
+          <span className="ll-lesson-card-v2-time">
             {Math.max(1, Math.round(skill.estimated_seconds / 60))} phút
           </span>
         </div>
       </div>
 
       <div className="ll-lesson-card-v2-progress">
-        <div className="ll-lesson-card-v2-progress-bar">
+        <div className="ll-lesson-card-v2-progress-track">
           <div
             className="ll-lesson-card-v2-progress-fill"
             style={{ width: `${pct}%` }}
@@ -284,42 +278,7 @@ function LessonCard({
   );
 }
 
-function EmptyState({
-  filter,
-  totalLessons,
-}: {
-  filter: FilterKey;
-  totalLessons: number;
-}) {
-  if (totalLessons === 0) {
-    return (
-      <div className="ll-lessons-empty">
-        <p>Lộ trình của bạn chưa có bài học. Hãy chọn lộ trình ở tab Khóa học.</p>
-      </div>
-    );
-  }
-  const msg =
-    filter === "learning"
-      ? "Bạn chưa đang học bài nào. Bấm một thẻ 'Mới' để bắt đầu."
-      : filter === "done"
-      ? "Chưa có bài nào hoàn thành. Cố lên!"
-      : filter === "new"
-      ? "Bạn đã thử qua hết bài rồi. Hãy ôn các bài 'Đang học'."
-      : "Không tìm thấy bài phù hợp.";
-  return (
-    <div className="ll-lessons-empty">
-      <p>{msg}</p>
-    </div>
-  );
-}
-
-/* ── Helpers ─────────────────────────────────────────────────── */
-
-function getStatus(
-  skillId: string,
-  states: Record<string, SkillState>,
-  nowISO: string,
-): LessonStatus {
+function getStatus(skillId: string, states: Record<string, SkillState>, nowISO: string): LessonStatus {
   const s = states[skillId];
   if (!s) return "new";
   const decayed = decayedStrength(s, nowISO);
@@ -327,16 +286,10 @@ function getStatus(
   return "learning";
 }
 
-function computeStatusCounts(
-  lessons: SkillUnit[],
-  states: Record<string, SkillState>,
-): { learning: number; done: number; new: number } {
+function computeStatusCounts(lessons: SkillUnit[], states: Record<string, SkillState>): { learning: number; done: number; new: number } {
   const out = { learning: 0, done: 0, new: 0 };
   const now = new Date().toISOString();
-  for (const l of lessons) {
-    const s = getStatus(l.id, states, now);
-    out[s]++;
-  }
+  for (const l of lessons) out[getStatus(l.id, states, now)]++;
   return out;
 }
 
@@ -380,4 +333,12 @@ function prettyTag(tag: string): string {
     toeic: "TOEIC",
   };
   return map[rest] ?? rest.replace(/_/g, " ");
+}
+
+function emptyMessage(filter: FilterKey, totalLessons: number): string {
+  if (totalLessons === 0) return "Lộ trình chưa có bài học. Hãy chọn lộ trình ở tab Khóa học.";
+  if (filter === "learning") return "Bạn chưa đang học bài nào. Bấm một thẻ 'Mới' để bắt đầu.";
+  if (filter === "done") return "Chưa có bài nào hoàn thành. Cố lên!";
+  if (filter === "new") return "Bạn đã thử qua hết bài rồi. Hãy ôn các bài 'Đang học'.";
+  return "Không tìm thấy bài phù hợp.";
 }

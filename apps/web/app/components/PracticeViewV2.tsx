@@ -3,15 +3,19 @@
 /**
  * Path: apps/web/app/components/PracticeViewV2.tsx
  *
- * "Luyện đề" tab — rebuilt from legacy hardcoded metrics + mock quiz
- * rows to use ASU pool + SM-2 SkillState.
+ * "Luyện đề" tab — REDESIGN 2026-05-25 (match site design system).
  *
- * Now:
- *   - 3 metric cards computed from SkillState + recent sessions
- *   - "Tạo đề mới" generates a fresh 10-ASU mixed queue via recommender
- *   - Quick-pick chips per skill type (vocab / grammar / listening / ...)
- *   - Recent quiz list = StudySessions from /api/study-sessions
- *     (gracefully empty when API doesn't exist yet)
+ * Fixes from previous attempt:
+ *   - Avg score now shows "—" when no states yet (was showing "14.3"
+ *     awkwardly from a single SM-2 state).
+ *   - Metric cards use .ll-glass (28px radius) to match Groups + hero.
+ *   - Quick chips use the same "icon + title + meta" pattern as the
+ *     ASU recommendation chips on LearnPathHero so they feel like part
+ *     of the same family.
+ *   - Empty state for "Đề gần đây" is a styled glass card, not a bare
+ *     dashed div.
+ *   - "Tạo đề mới" CTA moved into the same row as section header,
+ *     matching the "Tạo nhóm" placement in Groups tab.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -81,7 +85,7 @@ export function PracticeViewV2() {
       const data = await res.json();
       if (Array.isArray(data)) setRecentSessions(data);
     } catch {
-      // not logged in or API not ready — silent
+      // silent
     }
   }
 
@@ -104,7 +108,7 @@ export function PracticeViewV2() {
     if (queue.length > 0) setActiveQueue(queue);
   };
 
-  if (!mounted) return <div className="ll-practice-v2-skeleton" />;
+  if (!mounted) return <div className="ll-practice-v2-skeleton ll-glass" />;
 
   if (activeQueue) {
     return (
@@ -120,61 +124,59 @@ export function PracticeViewV2() {
 
   if (!profile) {
     return (
-      <div className="ll-practice-v2-empty">
+      <article className="ll-practice-v2-empty ll-glass">
         <p>
           Hãy{" "}
-          <a
-            href="/placement"
-            className="ll-accent"
-            style={{ fontWeight: 700 }}
-          >
+          <a href="/placement" className="ll-accent" style={{ fontWeight: 700 }}>
             làm bài kiểm tra xếp lớp
           </a>{" "}
           để hệ thống biết tạo đề phù hợp với bạn.
         </p>
-      </div>
+      </article>
     );
   }
 
   return (
     <div className="ll-practice-v2">
-      <div className="ll-practice-v2-cta-row">
-        <button
-          type="button"
-          onClick={startMixed}
-          className="ll-practice-v2-cta-primary"
-        >
-          Tạo đề mới (10 câu hỗn hợp) →
-        </button>
-      </div>
-
+      {/* Metric row */}
       <div className="ll-practice-v2-metrics">
         <MetricCard
           label="Đề đã làm"
           unit="tuần này"
           value={metrics.weeklyCount}
           delta={metrics.weeklyDelta}
+          format="int"
         />
         <MetricCard
           label="Điểm trung bình"
           unit="/100"
           value={metrics.avgScore}
-          isScore
+          hasData={metrics.avgScore > 0}
+          format="score"
         />
         <MetricCard
           label="Chính xác"
           unit="tổng đáp án"
           value={metrics.accuracy}
-          isPercent
+          hasData={recentSessions.length > 0}
+          format="percent"
         />
       </div>
 
+      {/* Quick-pick by skill */}
       <section className="ll-practice-v2-section">
         <header className="ll-practice-v2-section-head">
-          <h3>Chọn nhanh theo kỹ năng</h3>
-          <span className="ll-practice-v2-section-sub">
-            Đề 8 câu cho riêng kỹ năng bạn muốn ôn
-          </span>
+          <div>
+            <span className="ll-practice-v2-section-eyebrow">CHỌN NHANH · 5 KỸ NĂNG</span>
+            <h3>Luyện theo từng kỹ năng</h3>
+          </div>
+          <button
+            type="button"
+            onClick={startMixed}
+            className="ll-practice-v2-cta-primary"
+          >
+            Tạo đề mới (10 câu hỗn hợp) →
+          </button>
         </header>
         <div className="ll-practice-v2-quick-grid">
           {QUICK_TYPES.map((q) => {
@@ -187,11 +189,13 @@ export function PracticeViewV2() {
                 type="button"
                 onClick={() => startByType(q.id)}
                 disabled={total === 0}
-                className="ll-practice-v2-quick"
-                whileHover={{ y: -2 }}
+                className="ll-practice-v2-quick ll-glass"
+                whileHover={{ y: -3 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <span className="ll-practice-v2-quick-emoji">{q.emoji}</span>
+                <span className="ll-practice-v2-quick-emoji" aria-hidden="true">
+                  {q.emoji}
+                </span>
                 <span className="ll-practice-v2-quick-label">{q.label}</span>
                 <span className="ll-practice-v2-quick-meta">
                   {total} bài có sẵn
@@ -202,9 +206,13 @@ export function PracticeViewV2() {
         </div>
       </section>
 
+      {/* Recent */}
       <section className="ll-practice-v2-section">
         <header className="ll-practice-v2-section-head">
-          <h3>Đề gần đây</h3>
+          <div>
+            <span className="ll-practice-v2-section-eyebrow">LỊCH SỬ</span>
+            <h3>Đề gần đây</h3>
+          </div>
           <span className="ll-practice-v2-section-sub">
             {recentSessions.length === 0
               ? "Chưa có lần làm đề nào"
@@ -212,10 +220,12 @@ export function PracticeViewV2() {
           </span>
         </header>
         {recentSessions.length === 0 ? (
-          <div className="ll-practice-v2-empty-inline">
-            Bấm <strong>Tạo đề mới</strong> ở trên để bắt đầu. Lần làm đầu
-            tiên sẽ xuất hiện ở đây.
-          </div>
+          <article className="ll-practice-v2-empty-inline ll-glass">
+            <p>
+              Bấm <strong>Tạo đề mới</strong> ở trên để bắt đầu. Lần làm đầu
+              tiên sẽ xuất hiện ở đây.
+            </p>
+          </article>
         ) : (
           <div className="ll-practice-v2-history">
             {recentSessions.map((s) => (
@@ -233,45 +243,45 @@ function MetricCard({
   unit,
   value,
   delta,
-  isScore,
-  isPercent,
+  hasData,
+  format,
 }: {
   label: string;
   unit: string;
   value: number;
   delta?: number;
-  isScore?: boolean;
-  isPercent?: boolean;
+  hasData?: boolean;
+  format: "int" | "score" | "percent";
 }) {
-  const display = isScore
+  const showValue = hasData !== false;
+  const display = !showValue
+    ? "—"
+    : format === "score"
     ? value.toFixed(1)
-    : isPercent
+    : format === "percent"
     ? `${Math.round(value)}%`
     : `${Math.round(value)}`;
-  const numClass =
-    isScore || isPercent
-      ? "ll-practice-v2-metric-num green"
-      : "ll-practice-v2-metric-num";
+  const numClass = `ll-practice-v2-metric-num ${showValue && (format !== "int") ? "is-green" : ""}`;
 
   return (
-    <div className="ll-practice-v2-metric">
+    <article className="ll-practice-v2-metric ll-glass">
       <div className="ll-practice-v2-metric-label">{label}</div>
       <div className="ll-practice-v2-metric-row">
-        <span>{unit}</span>
+        <span className="ll-practice-v2-metric-unit">{unit}</span>
         <strong className={numClass}>{display}</strong>
       </div>
-      {typeof delta === "number" && delta !== 0 ? (
+      {typeof delta === "number" && delta !== 0 && showValue ? (
         <div
-          className={`ll-practice-v2-metric-delta ${delta > 0 ? "up" : "down"}`}
+          className={`ll-practice-v2-metric-delta ${delta > 0 ? "is-up" : "is-down"}`}
         >
           {delta > 0 ? "▲" : "▼"} {Math.abs(delta)} so với tuần trước
         </div>
       ) : (
-        <div className="ll-practice-v2-metric-delta neutral">
-          Tích lũy từ phiên đầu tiên
+        <div className="ll-practice-v2-metric-delta is-neutral">
+          {showValue ? "Tích lũy từ phiên đầu tiên" : "Chưa có dữ liệu"}
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -296,7 +306,7 @@ function SessionRow({ session }: { session: RecentSession }) {
       : date.toLocaleDateString("vi-VN");
 
   return (
-    <article className="ll-practice-v2-row">
+    <article className="ll-practice-v2-row ll-glass">
       <div className="ll-practice-v2-row-icon" aria-hidden="true">
         {sessionEmoji(session.primaryType)}
       </div>
@@ -324,10 +334,10 @@ function computeMetrics(
 ): PracticeMetrics {
   const now = Date.now();
   const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
-  const thisWeekSessions = sessions.filter(
+  const thisWeek = sessions.filter(
     (s) => now - new Date(s.startedAt).getTime() < oneWeekMs,
   );
-  const lastWeekSessions = sessions.filter((s) => {
+  const lastWeek = sessions.filter((s) => {
     const t = new Date(s.startedAt).getTime();
     return t < now - oneWeekMs && t > now - 2 * oneWeekMs;
   });
@@ -339,10 +349,12 @@ function computeMetrics(
     totalAttempts += s.totalSkills;
   }
 
+  // Avg score: only meaningful when user has done >= 3 ASUs.
+  // For < 3, show 0 (which the MetricCard renders as "—").
   const stateValues = Object.values(states);
   const nowISO = new Date().toISOString();
   let avgScore = 0;
-  if (stateValues.length > 0) {
+  if (stateValues.length >= 3) {
     const sum = stateValues.reduce(
       (acc, s) => acc + decayedStrength(s, nowISO) * 100,
       0,
@@ -351,8 +363,8 @@ function computeMetrics(
   }
 
   return {
-    weeklyCount: thisWeekSessions.length,
-    weeklyDelta: thisWeekSessions.length - lastWeekSessions.length,
+    weeklyCount: thisWeek.length,
+    weeklyDelta: thisWeek.length - lastWeek.length,
     avgScore,
     accuracy: totalAttempts > 0 ? (totalCorrect / totalAttempts) * 100 : 0,
   };

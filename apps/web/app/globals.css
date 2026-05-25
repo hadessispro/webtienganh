@@ -13561,10 +13561,7 @@ body { overflow-x: hidden; }
 .ll-courses-v2 {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
-  padding: 1.5rem 1rem 4rem;
-  max-width: 1100px;
-  margin: 0 auto;
+  gap: 18px;
   width: 100%;
 }
 
@@ -15182,41 +15179,58 @@ body { overflow-x: hidden; }
   font-weight: 700;
 }
 
+
 /* ═══════════════════════════════════════════════════════════════════
-   LESSONS V2 + PRACTICE V2 (2026-05-25)
+   LESSONS V2 + PRACTICE V2 — REDESIGN matching site design system
+   2026-05-25
+   Uses tokens: --ink, --paper, --line, --muted, --soft, --ll-glass-*
+   Cards extend .ll-glass for 28px radius + blur + gradient overlay.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Lessons v2 ───────────────────────────────────────────────── */
-.ll-lessons-v2 {
+/* Layout — fill horizontal space provided by .ll-page (1220px) */
+.ll-lessons-v2,
+.ll-practice-v2 {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 18px;
+  width: 100%;
 }
-.ll-lessons-v2-skeleton {
-  height: 400px;
-  background: rgba(0,0,0,0.03);
-  border-radius: 18px;
+
+.ll-lessons-v2-skeleton,
+.ll-practice-v2-skeleton {
+  min-height: 260px;
+  background: var(--paper);
 }
+
+/* ── Filter bar ───────────────────────────────────────────────── */
 .ll-lessons-filter {
+  padding: 18px 22px;
+}
+.ll-lessons-filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 14px;
   align-items: center;
 }
 .ll-lessons-search {
   flex: 1;
-  min-width: 240px;
+  min-width: 280px;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.7rem 1.2rem;
+  padding: 10px 18px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.ll-lessons-search:focus-within {
+  border-color: rgba(91, 174, 111, 0.45);
+  box-shadow: 0 0 0 4px rgba(91, 174, 111, 0.1);
 }
 .ll-lessons-search-icon {
   font-size: 0.95rem;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 .ll-lessons-search input {
   flex: 1;
@@ -15225,352 +15239,397 @@ body { overflow-x: hidden; }
   font-family: inherit;
   font-size: 0.95rem;
   outline: none;
+  color: var(--ink);
+}
+.ll-lessons-search input::placeholder {
+  color: var(--soft);
 }
 .ll-lessons-chips {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .ll-lessons-chip {
   appearance: none;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.55rem 1rem;
+  padding: 10px 16px;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 600;
-  color: rgba(20,32,43,0.7);
+  color: var(--muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 8px;
   transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
-.ll-lessons-chip:hover { background: rgba(0,0,0,0.03); }
+.ll-lessons-chip:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+}
 .ll-lessons-chip.is-active {
-  background: var(--text-primary, #14202b);
-  color: #fff;
-  border-color: var(--text-primary, #14202b);
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
 }
 .ll-lessons-chip-count {
   font-size: 0.74rem;
-  padding: 0.1rem 0.4rem;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.06);
-  color: rgba(20,32,43,0.55);
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--soft);
+  font-weight: 700;
 }
 .ll-lessons-chip.is-active .ll-lessons-chip-count {
-  background: rgba(255,255,255,0.18);
-  color: rgba(255,255,255,0.85);
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.9);
 }
+
+/* ── Lessons grid ─────────────────────────────────────────────── */
 .ll-lessons-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
 }
+
+/* ── Lesson card ─────────────────────────────────────────────── */
 .ll-lesson-card-v2 {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 18px;
-  padding: 1.4rem 1.3rem 1.2rem;
+  padding: 22px 22px 20px;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  gap: 14px;
+  text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .ll-lesson-card-v2:hover {
-  border-color: rgba(99,102,241,0.4);
-  box-shadow: 0 14px 32px rgba(0,0,0,0.06);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 46px rgba(20, 60, 40, 0.13);
 }
 .ll-lesson-card-v2-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
 }
 .ll-lesson-card-v2-icon {
-  width: 42px;
-  height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: rgba(99,102,241,0.1);
-  font-size: 1.2rem;
+  width: 46px;
+  height: 46px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(91, 174, 111, 0.15);
+  border: 1px solid rgba(91, 174, 111, 0.25);
+  font-size: 1.3rem;
 }
 .ll-lesson-card-v2-status {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  padding: 0.25rem 0.6rem;
+  padding: 5px 11px;
   border-radius: 999px;
+  text-transform: uppercase;
 }
 .ll-lesson-card-v2-status--new {
-  background: rgba(255,196,0,0.16);
-  color: rgba(180,120,0,1);
+  background: rgba(255, 196, 0, 0.18);
+  color: rgba(170, 110, 0, 1);
 }
 .ll-lesson-card-v2-status--learning {
-  background: rgba(99,102,241,0.14);
-  color: rgba(67,70,191,1);
+  background: rgba(91, 174, 111, 0.16);
+  color: #2d6a3d;
 }
 .ll-lesson-card-v2-status--done {
-  background: rgba(16,185,129,0.14);
+  background: rgba(16, 185, 129, 0.16);
   color: #065f46;
 }
 .ll-lesson-card-v2-body {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 6px;
 }
-.ll-lesson-card-v2-type {
-  font-size: 0.72rem;
+.ll-lesson-card-v2-eyebrow {
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(20,32,43,0.55);
+  color: var(--soft);
 }
 .ll-lesson-card-v2-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--text-primary, #14202b);
+  color: var(--ink);
   line-height: 1.35;
+  word-break: break-word;
 }
-.ll-lesson-card-v2-meta {
+.ll-lesson-card-v2-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 6px;
   align-items: center;
-  margin-top: 0.2rem;
+  margin-top: 4px;
 }
-.ll-lesson-card-v2-meta-chip {
-  font-size: 0.72rem;
+.ll-lesson-card-v2-tag {
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.2rem 0.55rem;
-  background: rgba(0,0,0,0.04);
-  border-radius: 6px;
-  color: rgba(20,32,43,0.65);
+  padding: 4px 9px;
+  background: rgba(91, 174, 111, 0.1);
+  border: 1px solid rgba(91, 174, 111, 0.18);
+  border-radius: 8px;
+  color: #3d7a4d;
 }
-.ll-lesson-card-v2-meta-time {
-  font-size: 0.78rem;
-  color: rgba(20,32,43,0.5);
+.ll-lesson-card-v2-time {
+  font-size: 0.76rem;
+  color: var(--soft);
+  margin-left: auto;
 }
 .ll-lesson-card-v2-progress {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 10px;
 }
-.ll-lesson-card-v2-progress-bar {
+.ll-lesson-card-v2-progress-track {
   flex: 1;
-  height: 6px;
-  background: rgba(0,0,0,0.06);
+  height: 8px;
+  background: rgba(91, 174, 111, 0.12);
   border-radius: 999px;
   overflow: hidden;
 }
 .ll-lesson-card-v2-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6366f1, #10b981);
+  background: linear-gradient(90deg, rgba(91, 174, 111, 1), rgba(45, 106, 61, 1));
   border-radius: 999px;
   transition: width 0.4s ease;
 }
 .ll-lesson-card-v2-progress-pct {
   font-size: 0.78rem;
   font-weight: 700;
-  color: rgba(20,32,43,0.6);
-  min-width: 36px;
+  color: var(--muted);
+  min-width: 38px;
   text-align: right;
 }
 .ll-lesson-card-v2-cta {
   appearance: none;
   border: 0;
   border-radius: 999px;
-  padding: 0.75rem 1.2rem;
+  padding: 12px 18px;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 .ll-lesson-card-v2-cta--new {
-  background: var(--text-primary, #14202b);
-  color: #fff;
+  background: var(--ink);
+  color: white;
+}
+.ll-lesson-card-v2-cta--new:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(23, 32, 51, 0.3);
 }
 .ll-lesson-card-v2-cta--learning {
-  background: rgba(99,102,241,0.15);
-  color: rgba(67,70,191,1);
+  background: rgba(91, 174, 111, 0.95);
+  color: white;
+}
+.ll-lesson-card-v2-cta--learning:hover {
+  background: rgba(91, 174, 111, 1);
+  transform: translateY(-1px);
 }
 .ll-lesson-card-v2-cta--done {
-  background: rgba(16,185,129,0.15);
-  color: #065f46;
+  background: rgba(91, 174, 111, 0.14);
+  color: #2d6a3d;
 }
-.ll-lesson-card-v2-cta:hover { transform: translateY(-1px); }
-.ll-lessons-empty {
-  background: #fff;
-  border: 1px dashed rgba(0,0,0,0.12);
-  border-radius: 16px;
-  padding: 2rem 1.5rem;
-  text-align: center;
-  color: rgba(20,32,43,0.6);
-  font-size: 0.95rem;
+.ll-lesson-card-v2-cta--done:hover {
+  background: rgba(91, 174, 111, 0.2);
 }
 
-/* ── Practice v2 ──────────────────────────────────────────────── */
-.ll-practice-v2 {
+/* ── Lessons empty state ─────────────────────────────────────── */
+.ll-lessons-empty,
+.ll-practice-v2-empty,
+.ll-practice-v2-empty-inline {
+  padding: 32px 28px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.96rem;
+}
+.ll-lessons-empty p,
+.ll-practice-v2-empty p,
+.ll-practice-v2-empty-inline p {
+  margin: 0;
+}
+
+/* ── Practice v2 metric row ──────────────────────────────────── */
+.ll-practice-v2-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 880px) {
+  .ll-practice-v2-metrics { grid-template-columns: 1fr; }
+}
+
+.ll-practice-v2-metric {
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
-  gap: 1.8rem;
+  gap: 10px;
 }
-.ll-practice-v2-skeleton {
-  height: 500px;
-  background: rgba(0,0,0,0.03);
-  border-radius: 18px;
+.ll-practice-v2-metric-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--soft);
 }
-.ll-practice-v2-cta-row {
+.ll-practice-v2-metric-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ll-practice-v2-metric-unit {
+  font-size: 0.82rem;
+  color: var(--soft);
+}
+.ll-practice-v2-metric-num {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.ll-practice-v2-metric-num.is-green {
+  color: #2d6a3d;
+}
+.ll-practice-v2-metric-delta {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.ll-practice-v2-metric-delta.is-up { color: #2d6a3d; }
+.ll-practice-v2-metric-delta.is-down { color: #b94545; }
+.ll-practice-v2-metric-delta.is-neutral { color: var(--soft); }
+
+/* ── Sections ─────────────────────────────────────────────────── */
+.ll-practice-v2-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ll-practice-v2-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 6px 4px 0;
+}
+.ll-practice-v2-section-head h3 {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ll-practice-v2-section-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--soft);
+  text-transform: uppercase;
+}
+.ll-practice-v2-section-sub {
+  font-size: 0.84rem;
+  color: var(--soft);
 }
 .ll-practice-v2-cta-primary {
   appearance: none;
-  background: var(--text-primary, #14202b);
-  color: #fff;
+  background: var(--ink);
+  color: white;
   border: 0;
   border-radius: 999px;
-  padding: 0.85rem 1.7rem;
+  padding: 11px 22px;
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 .ll-practice-v2-cta-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(20,32,43,0.25);
+  box-shadow: 0 14px 32px rgba(23, 32, 51, 0.32);
 }
-.ll-practice-v2-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-}
-.ll-practice-v2-metric {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 18px;
-  padding: 1.4rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-.ll-practice-v2-metric-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(20,32,43,0.55);
-}
-.ll-practice-v2-metric-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-.ll-practice-v2-metric-row span {
-  font-size: 0.82rem;
-  color: rgba(20,32,43,0.5);
-}
-.ll-practice-v2-metric-num {
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: var(--text-primary, #14202b);
-  line-height: 1;
-}
-.ll-practice-v2-metric-num.green { color: #059669; }
-.ll-practice-v2-metric-delta {
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-.ll-practice-v2-metric-delta.up { color: #059669; }
-.ll-practice-v2-metric-delta.down { color: #dc2626; }
-.ll-practice-v2-metric-delta.neutral { color: rgba(20,32,43,0.45); }
 
-.ll-practice-v2-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.ll-practice-v2-section-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.ll-practice-v2-section-head h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-primary, #14202b);
-}
-.ll-practice-v2-section-sub {
-  font-size: 0.8rem;
-  color: rgba(20,32,43,0.5);
-}
+/* ── Quick-pick chips ─────────────────────────────────────────── */
 .ll-practice-v2-quick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+@media (max-width: 880px) {
+  .ll-practice-v2-quick-grid { grid-template-columns: repeat(2, 1fr); }
 }
 .ll-practice-v2-quick {
   appearance: none;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 16px;
-  padding: 1.1rem 1rem 1rem;
+  padding: 22px 18px 20px;
+  border: 0;
   text-align: left;
   font-family: inherit;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  gap: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .ll-practice-v2-quick:hover:not(:disabled) {
-  border-color: rgba(99,102,241,0.4);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.05);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 46px rgba(20, 60, 40, 0.13);
 }
-.ll-practice-v2-quick:disabled { opacity: 0.5; cursor: not-allowed; }
-.ll-practice-v2-quick-emoji { font-size: 1.5rem; line-height: 1; }
+.ll-practice-v2-quick:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ll-practice-v2-quick-emoji {
+  font-size: 1.7rem;
+  line-height: 1;
+}
 .ll-practice-v2-quick-label {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: var(--text-primary, #14202b);
+  color: var(--ink);
+  margin-top: 4px;
 }
 .ll-practice-v2-quick-meta {
-  font-size: 0.74rem;
-  color: rgba(20,32,43,0.5);
+  font-size: 0.76rem;
+  color: var(--soft);
 }
 
+/* ── Recent session rows ──────────────────────────────────────── */
 .ll-practice-v2-history {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 10px;
 }
 .ll-practice-v2-row {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 14px;
-  padding: 0.95rem 1.2rem;
+  padding: 16px 22px;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 16px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.ll-practice-v2-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(20, 60, 40, 0.1);
 }
 .ll-practice-v2-row-icon {
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: rgba(99,102,241,0.1);
-  font-size: 1.1rem;
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(91, 174, 111, 0.15);
+  border: 1px solid rgba(91, 174, 111, 0.25);
+  font-size: 1.2rem;
+  flex-shrink: 0;
 }
 .ll-practice-v2-row-body {
   flex: 1;
@@ -15578,34 +15637,19 @@ body { overflow-x: hidden; }
 }
 .ll-practice-v2-row-body h4 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   font-weight: 700;
-  color: var(--text-primary, #14202b);
+  color: var(--ink);
 }
 .ll-practice-v2-row-body p {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: rgba(20,32,43,0.55);
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: var(--soft);
 }
 .ll-practice-v2-row-score {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-weight: 800;
-  color: #059669;
+  color: #2d6a3d;
+  flex-shrink: 0;
 }
 
-.ll-practice-v2-empty,
-.ll-practice-v2-empty-inline {
-  background: #fff;
-  border: 1px dashed rgba(0,0,0,0.12);
-  border-radius: 14px;
-  padding: 1.4rem 1.5rem;
-  text-align: center;
-  color: rgba(20,32,43,0.6);
-  font-size: 0.9rem;
-}
-
-@media (max-width: 640px) {
-  .ll-lessons-grid { grid-template-columns: 1fr; }
-  .ll-practice-v2-metrics { grid-template-columns: 1fr; }
-  .ll-practice-v2-quick-grid { grid-template-columns: repeat(2, 1fr); }
-}
