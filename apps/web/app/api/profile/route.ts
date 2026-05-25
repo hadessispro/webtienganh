@@ -27,6 +27,12 @@ export async function POST(req: Request) {
     },
     create: {
       userId: session.user.id,
+      goal: data.goal || "communication",
+      primaryGoal: data.primaryGoal || "Giao tiếp cơ bản",
+      goalContext: data.goalContext || {},
+      cefr: data.cefr || "A1",
+      targetCefr: data.targetCefr || "B1",
+      studyPathId: data.studyPathId || "general",
       ...data,
     }
   })

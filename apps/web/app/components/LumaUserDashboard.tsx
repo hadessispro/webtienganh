@@ -27,13 +27,17 @@ import { CoursePathGrid } from "./CoursePathGrid";
 import { CoursesViewV2 } from "./CoursesViewV2";
 import { LessonsViewV2 } from "./LessonsViewV2";
 import { PracticeViewV2 } from "./PracticeViewV2";
+import { ExamHubV2 } from "./ExamHubV2";
+import dynamic from "next/dynamic";
+
+const ExamRoom = dynamic(() => import("./ExamRoom").then(mod => mod.ExamRoom), { ssr: false });
 import { GroupsView } from "./GroupsView";
 import { ShadowingView } from "./ShadowingView";
 import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
 
 gsap.registerPlugin(useGSAP);
 
-type LearningView = "today" | "lesson" | "courses" | "practice" | "flashcards" | "shadowing" | "schedule" | "group" | "profile";
+type LearningView = "today" | "lesson" | "courses" | "practice" | "exams" | "flashcards" | "shadowing" | "schedule" | "group" | "profile";
 
 type LineIconName =
   | LearningView
@@ -52,6 +56,7 @@ type LineIconName =
   | "target"
   | "chart"
   | "folder"
+  | "exams"
   | "users";
 
 type ShadowingClip = {
@@ -241,7 +246,8 @@ const navItems: Array<{ id: LearningView; label: string }> = [
   { id: "today", label: "Hôm nay" },
   { id: "lesson", label: "Bài học" },
   { id: "courses", label: "Khóa học" },
-  { id: "practice", label: "Đề luyện" },
+  { id: "practice", label: "Luyện phản xạ" },
+  { id: "exams", label: "Kho đề thi" },
   { id: "flashcards", label: "Flashcard" },
   { id: "shadowing", label: "Shadowing" },
   { id: "schedule", label: "Lịch học" },
@@ -887,6 +893,7 @@ function LineIcon({ name }: { name: LineIconName }) {
     target: <path {...common} d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />,
     chart: <path {...common} d="M5 19V9M12 19V5M19 19v-7" />,
     folder: <path {...common} d="M4 7h6l2 2h8v9H4z" />,
+    exams: <path {...common} d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />,
     users: <path {...common} d="M16 19a4 4 0 0 0-8 0M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM20 18a3 3 0 0 0-3-3" />
   };
 
@@ -1186,6 +1193,7 @@ export function LumaUserDashboard() {
   const [profile, setProfile] = useState<LearnerProfile | null>(null);
   const [courses, setCourses] = useState<Course[]>(defaultCourses);
   const [activeView, setActiveView] = useState<LearningView>("today");
+  const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState(defaultCourses[0]?.id ?? "");
   const [selectedClipId, setSelectedClipId] = useState(shadowingClips[0].id);
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
@@ -2116,6 +2124,10 @@ export function LumaUserDashboard() {
     );
   }
 
+  if (activeExamId) {
+    return <ExamRoom examId={activeExamId} onExit={() => setActiveExamId(null)} />;
+  }
+
   return (
     <section className="ll-dashboard" aria-label="Dashboard học tiếng Anh">
       <aside className="ll-nav ll-glass" aria-label="Điều hướng học">
@@ -2638,6 +2650,12 @@ export function LumaUserDashboard() {
         {activeView === "shadowing" ? (
           <div className="ll-page">
             <ShadowingView />
+          </div>
+        ) : null}
+
+        {activeView === "exams" ? (
+          <div className="ll-page">
+            <ExamHubV2 profile={profile} onStartExam={setActiveExamId} />
           </div>
         ) : null}
 

@@ -40,6 +40,8 @@ export function SessionPlayer({ queue, onExit, onComplete }: Props) {
   const startMs = useMemo(() => Date.now(), []);
   const [idx, setIdx] = useState(0);
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
+  const [attempts, setAttempts] = useState<any[]>([]);
+  const [hasPosted, setHasPosted] = useState(false);
   const done = idx >= queue.length;
 
   const handleSkillDone = (correct: boolean, elapsedMs: number) => {
@@ -56,6 +58,17 @@ export function SessionPlayer({ queue, onExit, onComplete }: Props) {
       wrong: s.wrong + (correct ? 0 : 1),
     }));
 
+    setAttempts((prev) => [
+      ...prev,
+      {
+        skillId: current.id,
+        type: current.payload.type,
+        correct,
+        elapsedMs,
+        qualityScore: quality,
+      },
+    ]);
+
     // Advance after a tiny delay so user sees feedback
     setTimeout(() => setIdx((i) => i + 1), 250);
   };
@@ -67,6 +80,22 @@ export function SessionPlayer({ queue, onExit, onComplete }: Props) {
       wrong: stats.wrong,
       durationMs: Date.now() - startMs,
     };
+
+    if (!hasPosted && queue.length > 0) {
+      setHasPosted(true);
+      fetch("/api/study-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startedAt: new Date(startMs).toISOString(),
+          totalSkills: queue.length,
+          correctCount: stats.correct,
+          wrongCount: stats.wrong,
+          attempts,
+          durationMs: final.durationMs,
+        }),
+      }).catch(console.error);
+    }
     return (
       <CompletionScreen
         stats={final}

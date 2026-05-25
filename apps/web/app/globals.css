@@ -15653,3 +15653,22 @@ body { overflow-x: hidden; }
   flex-shrink: 0;
 }
 
+
+.exam-option-hover:hover { background: rgba(0,0,0,0.03) !important; transform: translateY(-1px); }
+.exam-option-hover-dark:hover { background: rgba(255,255,255,0.08) !important; transform: translateY(-1px); }
+.exam-submit-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+/* Glass Scrollbar */
+.glass-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.glass-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.glass-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+}
+.glass-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
