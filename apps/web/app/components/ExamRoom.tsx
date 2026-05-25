@@ -25,13 +25,29 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
   const [showMusic, setShowMusic] = useState(true);
   const [isMiniMode, setIsMiniMode] = useState(false);
   
+  const [examData, setExamData] = useState<any>(null);
+  const [loadingExam, setLoadingExam] = useState(true);
+  
   const [quote, setQuote] = useState(QUOTES[0]);
   const [activeAudio, setActiveAudio] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
-  }, []);
+    
+    // Fetch Exam
+    fetch(`/api/exams/${examId}`)
+      .then(res => res.json())
+      .then(data => {
+        setExamData(data);
+        if (data.durationMin) setDurationMinutes(data.durationMin);
+        setLoadingExam(false);
+      })
+      .catch(err => {
+        console.error("Failed to load exam", err);
+        setLoadingExam(false);
+      });
+  }, [examId]);
 
   useEffect(() => {
     setTimeLeft(durationMinutes * 60);
@@ -212,35 +228,62 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
                 </div>
               </div>
               <div style={{ fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>
-                Đề thi: {examId}
+                Đề thi: {examData?.title || examId}
               </div>
             </div>
 
-            {/* Exam Content Area */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "32px", display: "flex", justifyContent: "center" }}>
-              <div style={{ width: "100%", maxWidth: "900px", background: "rgba(255,255,255,0.9)", color: "black", borderRadius: "16px", padding: "40px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}>
-                <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "24px", borderBottom: "2px solid #eee", paddingBottom: "16px" }}>Phần 1: Trắc nghiệm</h1>
-                
-                {[1, 2, 3, 4, 5].map(q => (
-                  <div key={q} style={{ marginBottom: "32px" }}>
-                    <p style={{ fontWeight: "600", fontSize: "16px", marginBottom: "16px" }}>
-                      Câu {q}: Đây là nội dung giả định của câu hỏi số {q} trong đề thi {examId}. Bạn sẽ chọn đáp án nào dưới đây?
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {["A. Đáp án thứ nhất", "B. Đáp án thứ hai", "C. Đáp án thứ ba", "D. Đáp án thứ tư"].map(ans => (
-                        <label key={ans} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer" }}>
-                          <input type="radio" name={`q${q}`} />
-                          <span>{ans}</span>
-                        </label>
-                      ))}
-                    </div>
+            {/* Split Screen Exam Content Area */}
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", background: "white", color: "black" }}>
+              {loadingExam ? (
+                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>Đang tải đề thi...</div>
+              ) : examData ? (
+                <>
+                  {/* Left Panel: Passage / Context */}
+                  <div style={{ flex: 1, borderRight: "2px solid #e5e7eb", padding: "40px", overflowY: "auto", background: "#f9fafb" }}>
+                    <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "24px" }}>Nội dung bài thi</h2>
+                    {examData.parts.map((part: any) => (
+                      <div key={part.id} style={{ marginBottom: "40px" }}>
+                        <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#059669" }}>{part.title}</h3>
+                        {part.content && (
+                          <div style={{ padding: "24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", marginTop: "16px", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                            {part.content}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
 
-                <button style={{ width: "100%", padding: "16px", background: "#059669", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", marginTop: "16px" }}>
-                  Nộp Bài
-                </button>
-              </div>
+                  {/* Right Panel: Questions */}
+                  <div style={{ flex: 1, padding: "40px", overflowY: "auto" }}>
+                    <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "24px" }}>Phiếu trả lời</h2>
+                    {examData.parts.map((part: any) => (
+                      <div key={`q-${part.id}`} style={{ marginBottom: "32px" }}>
+                        {part.questions.map((q: any) => (
+                          <div key={q.id} style={{ marginBottom: "32px", padding: "24px", background: "#f3f4f6", borderRadius: "12px" }}>
+                            <p style={{ fontWeight: "600", fontSize: "16px", marginBottom: "16px" }}>
+                              <span style={{ color: "#059669", marginRight: "8px" }}>Câu {q.order}:</span> {q.question}
+                            </p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                              {q.options?.map((ans: string, i: number) => (
+                                <label key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer" }}>
+                                  <input type="radio" name={`q${q.id}`} value={ans} />
+                                  <span>{ans}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+
+                    <button style={{ width: "100%", padding: "16px", background: "#059669", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", marginTop: "16px" }}>
+                      Nộp Bài
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", color: "red" }}>Không tìm thấy dữ liệu đề thi.</div>
+              )}
             </div>
           </motion.div>
         )}

@@ -31,6 +31,7 @@ export function ExamHubV2({ profile, onStartExam }: { profile: LearnerProfile, o
   }
 
   const mockExams = [
+    { id: "toeic-test-1", title: "TOEIC Mini Test 1", questions: 4, time: 30, type: "TOEIC" },
     { id: "cam-18-test-1", title: "Cambridge IELTS 18 - Test 1", questions: 40, time: 60, type: "Listening" },
     { id: "cam-18-test-2", title: "Cambridge IELTS 18 - Test 2", questions: 40, time: 60, type: "Reading" },
     { id: "cam-17-test-1", title: "Cambridge IELTS 17 - Test 1", questions: 40, time: 60, type: "Listening" },
