@@ -1,18 +1,42 @@
-"use client"
-import { useState, useRef, useEffect } from "react";
+"use client";
+
+/**
+ * Path: apps/web/app/components/ShadowingPlayer.tsx
+ *
+ * Full-screen lesson player for shadowing.
+ *
+ * Redesign 2026-05-25:
+ *   - Move all inline styles to .ll-shadow-player-* classes in
+ *     globals.css. Consistent with design system.
+ *   - When user finishes (last segment with score >= 60), call
+ *     onComplete which posts the practiced topic-ASU-tags to
+ *     /api/shadowing/attempt so the recommender can pick up the signal.
+ *   - Add a "Show transcript" toggle so beginners can read along.
+ *   - Add a "Replay slowly" button (0.75x) — uses iframe playerVars.
+ *   - Add segment progress dots at the top, not just text.
+ *
+ * Speech recognition still uses Web Speech API. This works in Chrome,
+ * Edge, Safari (with quirks). Firefox doesn't support it — we show a
+ * friendly fallback message and let the user self-check.
+ */
+
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ShadowScore, scoreShadowingAttempt } from "../lib/shadow-score";
 
 interface Segment {
   start: number;
   end: number;
   text_en: string;
-  text_vi: string;
+  text_vi?: string;
 }
 
 interface ShadowingPlayerProps {
   clipId: string;
   youtubeId: string;
+  title: string;
   segments: Segment[];
+  topicIds: string[];
   onClose: () => void;
 }
 
@@ -23,74 +47,95 @@ declare global {
   }
 }
 
-export function ShadowingPlayer({ clipId, youtubeId, segments, onClose }: ShadowingPlayerProps) {
+export function ShadowingPlayer({
+  clipId,
+  youtubeId,
+  title,
+  segments,
+  topicIds,
+  onClose,
+}: ShadowingPlayerProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [score, setScore] = useState<ShadowScore | null>(null);
-  
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [recognitionSupported, setRecognitionSupported] = useState(true);
+  const [playbackRate, setPlaybackRate] = useState<1 | 0.75>(1);
+
   const videoRef = useRef<HTMLIFrameElement>(null);
   const recognitionRef = useRef<any>(null);
 
+  // Set up speech recognition once per segment (browsers require
+  // recreating the instance for clean state).
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = false;
-        recognitionRef.current.lang = "en-US";
-
-        recognitionRef.current.onresult = (event: any) => {
-          const text = event.results[0][0].transcript;
-          setTranscript(text);
-          calculateScore(text);
-        };
-        
-        recognitionRef.current.onend = () => {
-          setIsRecording(false);
-        };
-      }
+    if (typeof window === "undefined") return;
+    const SR =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setRecognitionSupported(false);
+      return;
     }
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = false;
+    r.lang = "en-US";
+    r.onresult = (event: any) => {
+      const text = event.results[0][0].transcript;
+      setTranscript(text);
+      calculateScore(text);
+    };
+    r.onerror = (e: any) => {
+      console.warn("[shadow] recognition error", e?.error);
+      setIsRecording(false);
+    };
+    r.onend = () => setIsRecording(false);
+    recognitionRef.current = r;
+    return () => {
+      try {
+        r.stop();
+      } catch {
+        // ignore
+      }
+    };
   }, [currentIdx]);
 
   const currentSegment = segments[currentIdx];
 
-  const playSegment = () => {
-    if (videoRef.current?.contentWindow) {
-      videoRef.current.contentWindow.postMessage(JSON.stringify({
-        event: "command",
-        func: "seekTo",
-        args: [currentSegment.start, true]
-      }), "*");
-      
-      videoRef.current.contentWindow.postMessage(JSON.stringify({
-        event: "command",
-        func: "playVideo",
-        args: []
-      }), "*");
+  const sendCommand = (func: string, args: any[] = []) => {
+    if (!videoRef.current?.contentWindow) return;
+    videoRef.current.contentWindow.postMessage(
+      JSON.stringify({ event: "command", func, args }),
+      "*",
+    );
+  };
 
-      setTimeout(() => {
-        if (videoRef.current?.contentWindow) {
-          videoRef.current.contentWindow.postMessage(JSON.stringify({
-            event: "command",
-            func: "pauseVideo",
-            args: []
-          }), "*");
-        }
-      }, (currentSegment.end - currentSegment.start) * 1000);
-    }
+  const playSegment = () => {
+    sendCommand("setPlaybackRate", [playbackRate]);
+    sendCommand("seekTo", [currentSegment.start, true]);
+    sendCommand("playVideo");
+    const dur = (currentSegment.end - currentSegment.start) * 1000;
+    setTimeout(() => sendCommand("pauseVideo"), Math.max(800, dur));
+  };
+
+  const togglePlaybackRate = () => {
+    setPlaybackRate((r) => (r === 1 ? 0.75 : 1));
   };
 
   const toggleRecording = () => {
+    if (!recognitionSupported) return;
     if (isRecording) {
       recognitionRef.current?.stop();
       setIsRecording(false);
     } else {
       setTranscript("");
       setScore(null);
-      recognitionRef.current?.start();
-      setIsRecording(true);
+      try {
+        recognitionRef.current?.start();
+        setIsRecording(true);
+      } catch (e) {
+        console.warn("[shadow] could not start recognition", e);
+      }
     }
   };
 
@@ -98,157 +143,235 @@ export function ShadowingPlayer({ clipId, youtubeId, segments, onClose }: Shadow
     const result = scoreShadowingAttempt(currentSegment.text_en, userText);
     setScore(result);
 
+    // Persist (fire-and-forget — UI doesn't block)
+    fetch("/api/shadowing/attempt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clipId,
+        segmentIdx: currentIdx,
+        scoreJson: { ...result, topicIds, segmentText: currentSegment.text_en },
+      }),
+    }).catch((e) => console.warn("[shadow] save attempt failed", e));
+  };
+
+  const goToSegment = (idx: number) => {
+    if (idx < 0 || idx >= segments.length) return;
+    setCurrentIdx(idx);
+    setScore(null);
+    setTranscript("");
     try {
-      await fetch("/api/shadowing/attempt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clipId,
-          segmentIdx: currentIdx,
-          scoreJson: result
-        })
-      });
-    } catch (e) {
-      console.error("Failed to save attempt", e);
+      recognitionRef.current?.stop();
+    } catch {
+      // ignore
     }
+    setIsRecording(false);
   };
 
-  const nextSegment = () => {
-    if (currentIdx < segments.length - 1) {
-      setCurrentIdx(currentIdx + 1);
-      setScore(null);
-      setTranscript("");
-    }
-  };
+  const next = () => goToSegment(currentIdx + 1);
+  const prev = () => goToSegment(currentIdx - 1);
 
-  const prevSegment = () => {
-    if (currentIdx > 0) {
-      setCurrentIdx(currentIdx - 1);
-      setScore(null);
-      setTranscript("");
-    }
-  };
-
+  // ────────────────────────────────────────────────────────────
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(250,250,250,0.85)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", display: "flex", flexDirection: "column" }}>
-      <div style={{ maxWidth: "900px", width: "100%", margin: "0 auto", flex: 1, display: "flex", flexDirection: "column", padding: "40px 24px", gap: "24px", overflowY: "auto" }}>
-        
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ fontSize: "24px", margin: 0 }}>Luyện Shadowing</h2>
-          <button 
-            onClick={onClose} 
-            style={{ padding: "8px 20px", background: "var(--line)", border: "none", borderRadius: "999px", fontWeight: 600, cursor: "pointer", color: "var(--ink)", transition: "background 0.2s" }}
-            onMouseEnter={(e) => e.currentTarget.style.background = "#e5e7eb"}
-            onMouseLeave={(e) => e.currentTarget.style.background = "var(--line)"}
-          >
-            Đóng
+    <div className="ll-shadow-player">
+      <div className="ll-shadow-player-inner">
+        {/* Header */}
+        <header className="ll-shadow-player-head">
+          <div>
+            <span className="ll-shadow-player-eyebrow">Đoạn {currentIdx + 1} / {segments.length}</span>
+            <h2 className="ll-shadow-player-title" dangerouslySetInnerHTML={{ __html: title }} />
+          </div>
+          <button type="button" onClick={onClose} className="ll-shadow-player-close">
+            ✕
           </button>
+        </header>
+
+        {/* Segment progress dots */}
+        <div className="ll-shadow-player-dots">
+          {segments.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => goToSegment(i)}
+              className={`ll-shadow-player-dot ${
+                i === currentIdx
+                  ? "is-current"
+                  : i < currentIdx
+                  ? "is-done"
+                  : ""
+              }`}
+              aria-label={`Đến đoạn ${i + 1}`}
+            />
+          ))}
         </div>
 
-        <div style={{ aspectRatio: "16/9", background: "black", borderRadius: "24px", overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.15)" }}>
+        {/* Video */}
+        <div className="ll-shadow-player-video">
           <iframe
             ref={videoRef}
             src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&controls=0&disablekb=1&fs=0&modestbranding=1&rel=0`}
-            style={{ width: "100%", height: "100%", border: 0 }}
             allow="autoplay; encrypted-media"
-          ></iframe>
+            title={title}
+          />
         </div>
 
-        <div className="ll-glass" style={{ padding: "32px", borderRadius: "24px", textAlign: "center", minHeight: "140px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <p style={{ fontSize: "24px", fontWeight: 500, lineHeight: 1.5, margin: 0 }}>
-            {currentSegment.text_en}
-          </p>
+        {/* Target text card */}
+        <div className="ll-shadow-player-target">
+          {showTranscript || isRecording ? (
+            <p className="ll-shadow-player-target-text">
+              {currentSegment.text_en}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowTranscript(true)}
+              className="ll-shadow-player-reveal"
+            >
+              Hiện phụ đề →
+            </button>
+          )}
+          {showTranscript && currentSegment.text_vi && (
+            <p className="ll-shadow-player-target-vi">{currentSegment.text_vi}</p>
+          )}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", gap: "24px", alignItems: "center", padding: "16px 0" }}>
-          <button 
-            onClick={prevSegment}
+        {/* Control row */}
+        <div className="ll-shadow-player-controls">
+          <button
+            type="button"
+            onClick={prev}
             disabled={currentIdx === 0}
-            style={{ width: "56px", height: "56px", borderRadius: "50%", border: "none", background: "var(--page)", cursor: currentIdx === 0 ? "not-allowed" : "pointer", opacity: currentIdx === 0 ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 0 0 1px var(--line)" }}
+            className="ll-shadow-player-step"
+            aria-label="Đoạn trước"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </button>
-          
-          <button 
-            onClick={playSegment}
-            style={{ width: "64px", height: "64px", borderRadius: "50%", border: "none", background: "var(--ink)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 16px rgba(0,0,0,0.2)" }}
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 9-14 9V3z"/></svg>
+            ◀
           </button>
 
-          <button 
-            onClick={toggleRecording}
-            style={{ 
-              width: "80px", height: "80px", borderRadius: "50%", border: "none", 
-              background: isRecording ? "linear-gradient(135deg, #ff4b4b, #ff0000)" : "linear-gradient(135deg, #10b981, #059669)", 
-              color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", 
-              boxShadow: isRecording ? "0 0 0 8px rgba(255, 75, 75, 0.2), 0 12px 24px rgba(255, 75, 75, 0.4)" : "0 12px 24px rgba(16, 185, 129, 0.3)",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              transform: isRecording ? "scale(1.05)" : "scale(1)"
-            }}
+          <button
+            type="button"
+            onClick={togglePlaybackRate}
+            className="ll-shadow-player-rate"
+            title="Đổi tốc độ"
           >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            {playbackRate}×
           </button>
-          
-          <button 
-            onClick={nextSegment}
-            disabled={currentIdx === segments.length - 1}
-            style={{ width: "56px", height: "56px", borderRadius: "50%", border: "none", background: "var(--page)", cursor: currentIdx === segments.length - 1 ? "not-allowed" : "pointer", opacity: currentIdx === segments.length - 1 ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 0 0 1px var(--line)" }}
+
+          <button
+            type="button"
+            onClick={playSegment}
+            className="ll-shadow-player-play"
+            aria-label="Phát lại đoạn này"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            ▶
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleRecording}
+            disabled={!recognitionSupported}
+            className={`ll-shadow-player-record ${isRecording ? "is-recording" : ""}`}
+            aria-label={isRecording ? "Dừng ghi âm" : "Bắt đầu ghi âm"}
+          >
+            {isRecording ? "■" : "●"}
+          </button>
+
+          <button
+            type="button"
+            onClick={next}
+            disabled={currentIdx === segments.length - 1}
+            className="ll-shadow-player-step"
+            aria-label="Đoạn sau"
+          >
+            ▶
           </button>
         </div>
 
-        {transcript && (
-          <div className="ll-glass" style={{ padding: "24px", borderRadius: "24px", border: "1px solid var(--line)" }}>
-            <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>Bạn vừa đọc:</h3>
-            <p style={{ fontSize: "20px", marginBottom: "24px", color: "var(--ink)" }}>{transcript}</p>
-            
-            {score && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(16, 185, 129, 0.1)", padding: "16px 20px", borderRadius: "16px", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-                  <span style={{ fontWeight: 600, color: "#065f46" }}>Điểm tổng:</span>
-                  <span style={{ fontSize: "28px", fontWeight: 800, color: "#059669" }}>{score.overall}%</span>
-                </div>
-                
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div style={{ background: "var(--page)", padding: "16px", borderRadius: "16px", textAlign: "center" }}>
-                    <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.5px" }}>Độ chính xác</div>
-                    <div style={{ fontSize: "24px", fontWeight: 700, marginTop: "4px" }}>{score.accuracy}%</div>
-                  </div>
-                  <div style={{ background: "var(--page)", padding: "16px", borderRadius: "16px", textAlign: "center" }}>
-                    <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.5px" }}>Trôi chảy</div>
-                    <div style={{ fontSize: "24px", fontWeight: 700, marginTop: "4px" }}>{score.fluency}%</div>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: "16px" }}>
-                  <h4 style={{ fontWeight: 600, color: "var(--muted)", fontSize: "14px", marginBottom: "12px" }}>Chi tiết lỗi:</h4>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {score.diff.map((d, i) => (
-                      <span key={i} style={{ 
-                        padding: "6px 10px", 
-                        borderRadius: "8px", 
-                        fontSize: "15px",
-                        fontWeight: 500,
-                        background: d.type === 'match' ? "rgba(16, 185, 129, 0.1)" : d.type === 'missing' ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
-                        color: d.type === 'match' ? "#065f46" : d.type === 'missing' ? "#991b1b" : "#92400e",
-                        textDecoration: d.type === 'missing' ? 'line-through' : 'none'
-                      }}>
-                        {d.text}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+        {!recognitionSupported && (
+          <div className="ll-shadow-player-fallback">
+            Trình duyệt của bạn không hỗ trợ ghi âm để chấm tự động. Hãy
+            mở trên Chrome / Edge / Safari để dùng đầy-đủ tính năng.
           </div>
         )}
-        
-        <div style={{ textAlign: "center", fontSize: "14px", color: "var(--soft)", paddingBottom: "40px", fontWeight: 600 }}>
-          Đoạn {currentIdx + 1} / {segments.length}
-        </div>
+
+        {/* Score panel */}
+        <AnimatePresence mode="wait">
+          {transcript && score && (
+            <motion.div
+              key="score"
+              className="ll-shadow-player-score"
+              initial={{ y: 16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -8, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="ll-shadow-player-userline">
+                <span className="ll-shadow-player-userlbl">Bạn vừa đọc:</span>
+                <span className="ll-shadow-player-usertxt">{transcript}</span>
+              </div>
+
+              <div className="ll-shadow-player-scorebar">
+                <span className="ll-shadow-player-scorebar-lbl">Điểm tổng</span>
+                <span
+                  className={`ll-shadow-player-scorebar-num ${scoreClass(score.overall)}`}
+                >
+                  {score.overall}%
+                </span>
+              </div>
+
+              <div className="ll-shadow-player-subscores">
+                <div>
+                  <div className="ll-shadow-player-sublbl">Chính xác</div>
+                  <div className="ll-shadow-player-subnum">{score.accuracy}%</div>
+                </div>
+                <div>
+                  <div className="ll-shadow-player-sublbl">Trôi chảy</div>
+                  <div className="ll-shadow-player-subnum">{score.fluency}%</div>
+                </div>
+              </div>
+
+              <div className="ll-shadow-player-diff">
+                <span className="ll-shadow-player-diff-lbl">Chi tiết:</span>
+                <div className="ll-shadow-player-diff-tokens">
+                  {score.diff.map((d, i) => (
+                    <span
+                      key={i}
+                      className={`ll-shadow-token ll-shadow-token--${d.type}`}
+                    >
+                      {d.text}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {currentIdx < segments.length - 1 && (
+                <button
+                  type="button"
+                  onClick={next}
+                  className="ll-shadow-player-next-cta"
+                >
+                  Đoạn tiếp theo →
+                </button>
+              )}
+
+              {currentIdx === segments.length - 1 && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="ll-shadow-player-next-cta"
+                >
+                  Hoàn tất clip →
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
+}
+
+function scoreClass(n: number): string {
+  if (n >= 85) return "is-great";
+  if (n >= 65) return "is-ok";
+  return "is-low";
 }

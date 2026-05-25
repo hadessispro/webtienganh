@@ -1,191 +1,447 @@
-"use client"
-import { useState, useEffect } from "react";
+"use client";
+
+/**
+ * Path: apps/web/app/components/ShadowingView.tsx
+ *
+ * Redesign 2026-05-25 (PR-Shadowing-Redesign).
+ *
+ * Fixes the previous version's biggest problems:
+ *   - Topic suggestions are now PROFILE-AWARE. A user who picked
+ *     "mất gốc / foundation A1" sees beginner topics like "Chào hỏi"
+ *     and "Sinh hoạt hàng ngày", not "TED Talks".
+ *   - Hardcoded styles → uses .ll-shadowing-* CSS classes from
+ *     globals.css that match the rest of the design system.
+ *   - Search query is augmented with topic-specific hints
+ *     (not just "english conversation subtitle" for everything).
+ *   - Clip cards show CEFR estimate + warning when a clip is
+ *     significantly above the user's level.
+ *
+ * Layout: 4 zones
+ *   Zone 1  hero card with greeting + profile context
+ *   Zone 2  search box (paste YouTube URL OR type topic)
+ *   Zone 3  recommended topic grid (filtered to profile)
+ *   Zone 4  "Clip bạn đã luyện" history grid
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+
 import { ShadowingPlayer } from "./ShadowingPlayer";
+import {
+  estimateClipCefr,
+  recommendTopicsFor,
+  type ShadowingTopic,
+} from "../lib/shadowing-topics";
+import { loadProfileFromStorage } from "../lib/recommend-engine";
+import type { CEFRLevel } from "../placement/_lib/types";
+
+interface SavedClip {
+  id: string;
+  youtubeId: string;
+  title: string;
+  durationSec: number;
+  cefrEstimate: string;
+  topics: string[];
+  segments: ClipSegment[];
+}
+
+interface ClipSegment {
+  start: number;
+  end: number;
+  text_en: string;
+  text_vi?: string;
+}
+
+interface YouTubeSearchHit {
+  id: { videoId: string };
+  snippet: { title: string; channelTitle: string };
+}
 
 export function ShadowingView() {
-  const [clips, setClips] = useState<any[]>([]);
+  const [clips, setClips] = useState<SavedClip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeClip, setActiveClip] = useState<any | null>(null);
-  const [isProcessingNew, setIsProcessingNew] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeClip, setActiveClip] = useState<SavedClip | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Profile state — read from localStorage first (works without login);
+  // when authenticated user has DB profile, /api/profile takes over.
+  const [profile, setProfile] = useState<{
+    cefr: CEFRLevel;
+    primaryGoal: string;
+  } | null>(null);
 
   useEffect(() => {
+    // 1. Local placement profile
+    const local = loadProfileFromStorage();
+    if (local) {
+      setProfile({ cefr: local.cefr, primaryGoal: local.primaryGoal });
+    }
+
+    // 2. In parallel, try server profile (may override / supplement)
     Promise.all([
-      fetch("/api/shadowing/clips").then(res => res.json()),
-      fetch("/api/profile").then(res => res.json())
+      fetch("/api/shadowing/clips")
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+      fetch("/api/profile")
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
     ]).then(([clipsData, profileData]) => {
       if (Array.isArray(clipsData)) setClips(clipsData);
-      if (profileData && profileData.cefr) setProfile(profileData);
+      if (profileData?.cefr && profileData?.primaryGoal) {
+        setProfile({
+          cefr: profileData.cefr,
+          primaryGoal: profileData.primaryGoal,
+        });
+      }
       setLoading(false);
     });
   }, []);
 
-  const handleSearch = async (queryToSearch?: string) => {
-    const q = queryToSearch || searchQuery;
-    if (!q) return;
-    setIsProcessingNew(true);
-    try {
-      const searchRes = await fetch(`/api/youtube/search?q=${encodeURIComponent(q + " english conversation subtitle")}`);
-      const searchData = await searchRes.json();
-      
-      if (searchData.length > 0) {
-        const video = searchData[0];
-        const videoId = video.id.videoId;
-        
-        const transcriptRes = await fetch(`/api/youtube/transcript?videoId=${videoId}`);
-        const segments = await transcriptRes.json();
-        
-        if (Array.isArray(segments) && segments.length > 0) {
-          const clipData = {
-            youtubeId: videoId,
-            title: video.snippet.title,
-            durationSec: segments[segments.length - 1].end,
-            cefrEstimate: profile?.cefr || "B1",
-            topics: [q],
-            segments
-          };
-          
-          const saveRes = await fetch("/api/shadowing/clips", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(clipData)
-          });
-          const savedClip = await saveRes.json();
-          
-          setClips(prev => [savedClip, ...prev]);
-          setActiveClip(savedClip);
-        } else {
-          alert("Video này không có phụ đề (Closed Captions) phù hợp.");
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Có lỗi xảy ra khi lấy video từ YouTube.");
-    }
-    setIsProcessingNew(false);
+  const recommendedTopics = useMemo<ShadowingTopic[]>(
+    () =>
+      recommendTopicsFor({
+        primaryGoal: (profile?.primaryGoal as any) ?? null,
+        cefr: profile?.cefr ?? null,
+        maxResults: 6,
+      }),
+    [profile?.primaryGoal, profile?.cefr],
+  );
+
+  // ─── Search / pick topic flow ──────────────────────────────────
+  const handlePickTopic = (t: ShadowingTopic) => {
+    runQuery(t.searchQuery, t);
   };
 
+  const handleSubmitSearch = () => {
+    const q = searchInput.trim();
+    if (!q) return;
+
+    // Detect YouTube URL paste
+    const urlMatch = q.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/,
+    );
+    if (urlMatch) {
+      ingestVideoId(urlMatch[1], q);
+      return;
+    }
+    runQuery(q, null);
+  };
+
+  const runQuery = async (
+    rawQuery: string,
+    topic: ShadowingTopic | null,
+  ) => {
+    setIsProcessing(true);
+    setErrorMsg(null);
+    try {
+      // Augment with profile context so YouTube returns better matches
+      const querySuffix =
+        topic?.searchQuery ??
+        `${rawQuery} english ${profile?.cefr === "A1" || profile?.cefr === "A2" ? "beginner slow" : ""} conversation`;
+      const fullQuery = topic ? topic.searchQuery : querySuffix;
+
+      const searchRes = await fetch(
+        `/api/youtube/search?q=${encodeURIComponent(fullQuery)}`,
+      );
+      if (!searchRes.ok) {
+        const err = await searchRes.json().catch(() => ({}));
+        setErrorMsg(err.error ?? "Không tìm được video phù hợp.");
+        return;
+      }
+      const searchData = (await searchRes.json()) as YouTubeSearchHit[];
+      if (!searchData.length) {
+        setErrorMsg("Không tìm thấy video nào có phụ đề cho chủ đề này.");
+        return;
+      }
+
+      // Pick the first hit with usable transcript
+      let savedClip: SavedClip | null = null;
+      for (const video of searchData.slice(0, 5)) {
+        const videoId = video.id?.videoId;
+        if (!videoId) continue;
+        savedClip = await ingestVideoId(videoId, video.snippet.title, topic);
+        if (savedClip) break;
+      }
+      if (!savedClip) {
+        setErrorMsg(
+          "Các video tìm thấy đều chưa có phụ đề tiếng Anh. Thử chủ đề khác hoặc dán link cụ thể.",
+        );
+      }
+    } catch (e) {
+      console.error("[shadowing] search failed", e);
+      setErrorMsg("Có lỗi mạng khi tìm video. Hãy thử lại.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const ingestVideoId = async (
+    videoId: string,
+    title: string,
+    topic?: ShadowingTopic | null,
+  ): Promise<SavedClip | null> => {
+    try {
+      const trRes = await fetch(`/api/youtube/transcript?videoId=${videoId}`);
+      if (!trRes.ok) return null;
+      const segments = (await trRes.json()) as ClipSegment[];
+      if (!Array.isArray(segments) || segments.length === 0) return null;
+
+      const estimatedCefr = estimateClipCefr(segments);
+
+      const clipData = {
+        youtubeId: videoId,
+        title,
+        durationSec: segments[segments.length - 1]?.end ?? 60,
+        cefrEstimate: estimatedCefr,
+        topics: topic ? [topic.id] : [],
+        segments,
+      };
+
+      const saveRes = await fetch("/api/shadowing/clips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(clipData),
+      });
+      const saved = (await saveRes.json()) as SavedClip;
+      setClips((prev) => [saved, ...prev.filter((c) => c.id !== saved.id)]);
+      setActiveClip(saved);
+      return saved;
+    } catch (e) {
+      console.warn("[shadowing] ingest failed", e);
+      return null;
+    }
+  };
+
+  // ─── Render player full-screen when active ─────────────────────
   if (activeClip) {
     return (
-      <ShadowingPlayer 
+      <ShadowingPlayer
         clipId={activeClip.id}
         youtubeId={activeClip.youtubeId}
+        title={activeClip.title}
         segments={activeClip.segments}
+        topicIds={activeClip.topics ?? []}
         onClose={() => setActiveClip(null)}
       />
     );
   }
 
   return (
-    <div style={{ padding: "0 24px 64px" }}>
-      <header className="ll-topbar ll-glass" style={{ marginBottom: "32px", padding: "32px", borderRadius: "24px" }}>
-        <div>
-          <div className="ll-label">Luyện phát âm</div>
-          <h1 style={{ fontSize: "32px", margin: "8px 0" }}>Shadowing <span className="ll-accent">Nhại giọng</span></h1>
-          <p style={{ color: "var(--muted)", margin: 0, fontSize: "16px" }}>Luyện tập phát âm bằng cách nghe và lặp lại các đoạn video thực tế.</p>
-        </div>
-      </header>
+    <div className="ll-shadowing-v2">
+      {/* ── Zone 1 — Hero with profile context ───────────────────── */}
+      <motion.header
+        className="ll-shadow-hero"
+        initial={{ y: 14, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
+        <span className="ll-shadow-eyebrow">Luyện phát âm · Shadowing</span>
+        <h2 className="ll-shadow-title">
+          Nghe và <span className="ll-accent">nhại theo</span> giọng người bản xứ
+        </h2>
+        {profile ? (
+          <p className="ll-shadow-sub">
+            Lộ trình của bạn: <strong>{describeGoalVi(profile.primaryGoal)}</strong>{" "}
+            · trình độ <strong>{profile.cefr}</strong>. Chủ đề bên dưới được
+            chọn riêng cho bạn.
+          </p>
+        ) : (
+          <p className="ll-shadow-sub">
+            Để có chủ đề phù hợp hơn, hãy{" "}
+            <a href="/placement" className="ll-shadow-link">
+              làm bài kiểm tra xếp lớp
+            </a>{" "}
+            trước.
+          </p>
+        )}
+      </motion.header>
 
-      <div className="ll-glass" style={{ display: "flex", gap: "16px", padding: "16px", borderRadius: "16px", marginBottom: "40px", alignItems: "center" }}>
-        <input 
-          type="text" 
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          placeholder="Dán link YouTube hoặc tìm kiếm chủ đề bạn muốn luyện tập..." 
-          style={{ flex: 1, padding: "16px 20px", background: "var(--page)", border: "1px solid var(--line)", borderRadius: "12px", outline: "none", color: "var(--ink)", fontSize: "16px", minWidth: 0 }}
+      {/* ── Zone 2 — Search box ───────────────────────────────────── */}
+      <section className="ll-shadow-search">
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSubmitSearch()}
+          placeholder="Dán link YouTube hoặc gõ chủ đề (ví dụ: ordering food)"
+          className="ll-shadow-search-input"
+          disabled={isProcessing}
         />
-        <button 
-          onClick={() => handleSearch()}
-          disabled={isProcessingNew}
-          className="primary-button"
-          style={{ padding: "0 32px", height: "54px", opacity: isProcessingNew ? 0.7 : 1, borderRadius: "12px", fontSize: "15px", flexShrink: 0 }}
+        <button
+          type="button"
+          onClick={handleSubmitSearch}
+          disabled={isProcessing || !searchInput.trim()}
+          className="ll-shadow-search-btn"
         >
-          {isProcessingNew ? "Đang xử lý..." : "Bắt đầu học"}
+          {isProcessing ? "Đang xử lý..." : "Bắt đầu"}
         </button>
-      </div>
+      </section>
 
-      {loading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: "60px" }}>
-          <div style={{ width: "32px", height: "32px", border: "3px solid var(--line)", borderTopColor: "var(--blue)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
-        </div>
-      ) : clips.length === 0 ? (
-        <div>
-          <h2 style={{ fontSize: "20px", marginBottom: "8px", color: "var(--ink)", paddingLeft: "8px" }}>Gợi ý cho bạn</h2>
-          <p style={{ paddingLeft: "8px", color: "var(--muted)", marginBottom: "24px" }}>Dựa trên trình độ <strong style={{color: "var(--blue)"}}>{profile?.cefr || 'A2'}</strong> và mục tiêu <strong style={{color: "var(--blue)"}}>{profile?.primaryGoal === 'work' ? 'Công việc' : 'Giao tiếp'}</strong> của bạn</p>
-          
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
-            {[
-              { title: "Business Meetings", desc: "Giao tiếp trong phòng họp", icon: "💼" },
-              { title: "Job Interview", desc: "Trả lời phỏng vấn trôi chảy", icon: "🤝" },
-              { title: "TED Talks", desc: "Luyện giọng điệu thuyết trình", icon: "🎤" },
-              { title: "Daily Conversation", desc: "Giao tiếp hàng ngày tự nhiên", icon: "☕" }
-            ].map(topic => (
-              <div 
-                key={topic.title}
-                className="ll-glass"
-                style={{ padding: "24px", borderRadius: "20px", cursor: "pointer", transition: "all 0.2s", display: "flex", flexDirection: "column", gap: "12px" }}
-                onClick={() => {
-                  setSearchQuery(topic.title);
-                  handleSearch(topic.title);
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.borderColor = "var(--blue)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.borderColor = "var(--line)";
-                }}
+      {errorMsg && (
+        <motion.div
+          className="ll-shadow-error"
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+        >
+          {errorMsg}
+        </motion.div>
+      )}
+
+      {/* ── Zone 3 — Recommended topics ───────────────────────────── */}
+      <section>
+        <header className="ll-shadow-section-head">
+          <h3>Gợi ý cho bạn</h3>
+          <span className="ll-shadow-section-sub">
+            {profile
+              ? `${recommendedTopics.length} chủ đề phù hợp trình độ ${profile.cefr}`
+              : "Khám phá theo chủ đề"}
+          </span>
+        </header>
+
+        {recommendedTopics.length === 0 ? (
+          <p className="ll-shadow-empty">
+            Chưa có chủ đề khớp. Hãy thử gõ chủ đề riêng phía trên.
+          </p>
+        ) : (
+          <div className="ll-shadow-topics">
+            {recommendedTopics.map((t) => (
+              <motion.button
+                key={t.id}
+                type="button"
+                onClick={() => handlePickTopic(t)}
+                disabled={isProcessing}
+                className="ll-shadow-topic-card"
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <div style={{ fontSize: "32px" }}>{topic.icon}</div>
-                <h3 style={{ fontSize: "18px", margin: 0, color: "var(--ink)" }}>{topic.title}</h3>
-                <p style={{ margin: 0, color: "var(--soft)", fontSize: "14px" }}>{topic.desc}</p>
-              </div>
+                <span className="ll-shadow-topic-emoji" aria-hidden="true">
+                  {t.emoji}
+                </span>
+                <span className="ll-shadow-topic-title">{t.labelVi}</span>
+                <span className="ll-shadow-topic-desc">{t.descVi}</span>
+                <span className="ll-shadow-topic-levels">
+                  {t.levels.join(" · ")}
+                </span>
+              </motion.button>
             ))}
           </div>
-        </div>
-      ) : (
-        <>
-          <h2 style={{ fontSize: "20px", marginBottom: "20px", color: "var(--ink)", paddingLeft: "8px" }}>Clip bạn đã luyện tập</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
-            {clips.map(clip => (
-            <div 
-              key={clip.id} 
-              className="ll-glass"
-              style={{ borderRadius: "20px", overflow: "hidden", cursor: "pointer", transition: "transform 0.3s, box-shadow 0.3s", display: "flex", flexDirection: "column" }}
-              onClick={() => setActiveClip(clip)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-6px)";
-                e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              <div style={{ position: "relative", aspectRatio: "16/9", background: "var(--line)" }}>
-                <img 
-                  src={`https://i.ytimg.com/vi/${clip.youtubeId}/mqdefault.jpg`} 
-                  alt={clip.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-                <div style={{ position: "absolute", bottom: "12px", right: "12px", background: "rgba(0,0,0,0.7)", color: "white", fontSize: "12px", fontWeight: "600", padding: "4px 8px", borderRadius: "6px", backdropFilter: "blur(4px)" }}>
-                  {Math.round(clip.durationSec / 60)}:{String(clip.durationSec % 60).padStart(2, '0')}
-                </div>
-              </div>
-              <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column" }}>
-                <h3 style={{ fontSize: "16px", margin: "0 0 16px 0", color: "var(--ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: "1.5" }} dangerouslySetInnerHTML={{__html: clip.title}}></h3>
-                <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "13px", fontWeight: 600 }}>
-                  <span style={{ padding: "4px 10px", background: "var(--page)", borderRadius: "8px", color: "var(--muted)" }}>{clip.cefrEstimate}</span>
-                  <span style={{ color: "var(--blue)" }}>{clip.segments.length} đoạn</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
+      </section>
+
+      {/* ── Zone 4 — History ──────────────────────────────────────── */}
+      <section>
+        <header className="ll-shadow-section-head">
+          <h3>Clip bạn đã luyện</h3>
+          <span className="ll-shadow-section-sub">
+            {clips.length === 0
+              ? "Chưa có clip nào"
+              : `${clips.length} clip đã lưu`}
+          </span>
+        </header>
+
+        {loading ? (
+          <div className="ll-shadow-loader">
+            <div className="ll-shadow-spinner" />
+          </div>
+        ) : clips.length === 0 ? (
+          <p className="ll-shadow-empty">
+            Sau khi bạn luyện xong một clip, nó sẽ xuất hiện ở đây để ôn lại.
+          </p>
+        ) : (
+          <div className="ll-shadow-clip-grid">
+            {clips.map((clip) => (
+              <ClipCard
+                key={clip.id}
+                clip={clip}
+                userCefr={profile?.cefr}
+                onPick={() => setActiveClip(clip)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Sub-components
+   ──────────────────────────────────────────────────────────────────── */
+
+function ClipCard({
+  clip,
+  userCefr,
+  onPick,
+}: {
+  clip: SavedClip;
+  userCefr?: CEFRLevel;
+  onPick: () => void;
+}) {
+  const tooHard = useMemo(() => {
+    if (!userCefr) return false;
+    const order = ["A1", "A2", "B1", "B2", "C1", "C2"];
+    return (
+      order.indexOf(clip.cefrEstimate) - order.indexOf(userCefr) >= 2
+    );
+  }, [clip.cefrEstimate, userCefr]);
+
+  const mm = Math.floor(clip.durationSec / 60);
+  const ss = String(clip.durationSec % 60).padStart(2, "0");
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onPick}
+      className="ll-shadow-clip"
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.99 }}
+    >
+      <div className="ll-shadow-clip-thumb">
+        <img
+          src={`https://i.ytimg.com/vi/${clip.youtubeId}/mqdefault.jpg`}
+          alt={clip.title}
+          loading="lazy"
+        />
+        <span className="ll-shadow-clip-duration">
+          {mm}:{ss}
+        </span>
+      </div>
+      <div className="ll-shadow-clip-body">
+        <h4
+          className="ll-shadow-clip-title"
+          dangerouslySetInnerHTML={{ __html: clip.title }}
+        />
+        <div className="ll-shadow-clip-meta">
+          <span
+            className={`ll-shadow-clip-cefr ${
+              tooHard ? "ll-shadow-clip-cefr--warn" : ""
+            }`}
+          >
+            {clip.cefrEstimate}
+            {tooHard && " (khó)"}
+          </span>
+          <span className="ll-shadow-clip-segs">
+            {clip.segments.length} đoạn
+          </span>
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
+function describeGoalVi(goal: string): string {
+  switch (goal) {
+    case "work":
+      return "Tiếng Anh công việc";
+    case "exam":
+      return "Luyện thi";
+    case "foundation":
+      return "Lấy lại căn bản";
+    case "travel":
+      return "Giao tiếp du lịch";
+    default:
+      return "Học cá nhân";
+  }
 }
