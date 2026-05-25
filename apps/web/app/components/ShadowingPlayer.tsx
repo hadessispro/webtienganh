@@ -430,225 +430,177 @@ export function ShadowingPlayer({
 
   /* ── Render ────────────────────────────────────────────────── */
   return (
-    <div className="ll-shadow-player">
-      <div className="ll-shadow-player-inner">
-        {/* Header */}
-        <header className="ll-shadow-player-head">
-          <div>
-            <span className="ll-shadow-player-eyebrow">
-              Đoạn {currentIdx + 1} / {segments.length}
-              {isAutoLoop && loopAttempts > 0 && (
-                <> · lượt {loopAttempts + 1}/{MAX_AUTOLOOP_ATTEMPTS}</>
-              )}
-            </span>
-            <h2
-              className="ll-shadow-player-title"
-              dangerouslySetInnerHTML={{ __html: title }}
-            />
-          </div>
-          <button type="button" onClick={onClose} className="ll-shadow-player-close">
-            ✕
+    <div className="ll-shadow-workspace" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--page)", display: "flex", width: "100vw", height: "100vh", overflow: "hidden" }}>
+      
+      {/* ── CỘT TRÁI: TIẾN TRÌNH & TỪ VỰNG (25%) ── */}
+      <div style={{ width: "320px", borderRight: "1px solid var(--line)", background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+        <div style={{ padding: "24px", borderBottom: "1px solid var(--line)" }}>
+          <button type="button" onClick={onClose} style={{ padding: "8px 16px", background: "var(--line)", border: "none", borderRadius: "8px", fontWeight: 600, cursor: "pointer", marginBottom: "24px", color: "var(--ink)", width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#e5e7eb"} onMouseLeave={(e) => e.currentTarget.style.background = "var(--line)"}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Thoát học
           </button>
-        </header>
+          
+          <h2 style={{ fontSize: "18px", margin: "0 0 8px 0", color: "var(--ink)", lineHeight: 1.4 }} dangerouslySetInnerHTML={{ __html: title }} />
+          <div style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>
+            {segments.length} đoạn {topicIds.length > 0 ? `• ${topicIds.join(", ")}` : ""}
+          </div>
+        </div>
 
-        {/* Mic permission warning */}
+        <div style={{ padding: "24px", flex: 1 }}>
+          <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700 }}>Danh sách câu</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {segments.map((seg, i) => (
+              <div 
+                key={i} 
+                onClick={() => goToSegment(i)}
+                style={{ 
+                  padding: "12px", 
+                  borderRadius: "12px", 
+                  cursor: "pointer", 
+                  background: i === currentIdx ? "var(--ink)" : i < currentIdx ? "rgba(0,0,0,0.02)" : "transparent",
+                  color: i === currentIdx ? "white" : "var(--ink)",
+                  border: i === currentIdx ? "none" : "1px solid var(--line)",
+                  transition: "all 0.2s"
+                }}
+              >
+                <div style={{ fontSize: "11px", opacity: 0.7, marginBottom: "4px", fontWeight: 600 }}>ĐOẠN {i + 1}</div>
+                <div style={{ fontSize: "13px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {seg.text_en}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── CỘT GIỮA: PLAYER & ĐIỀU KHIỂN (50%) ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--glass)", position: "relative", overflowY: "auto" }}>
+        
         {recognitionSupported && micPermission === "denied" && (
-          <div className="ll-shadow-player-warning">
-            ⚠️ Trình duyệt đang chặn microphone. Bấm icon 🔒 hoặc 🎤 ở thanh
-            địa chỉ → chọn <strong>Cho phép</strong> → tải lại trang.
+          <div className="ll-shadow-player-warning" style={{ margin: "24px 24px 0" }}>
+            ⚠️ Trình duyệt đang chặn microphone. Bấm icon 🔒 hoặc 🎤 ở thanh địa chỉ → chọn <strong>Cho phép</strong> → tải lại trang.
           </div>
         )}
 
-        {/* Segment progress dots */}
-        <div className="ll-shadow-player-dots">
-          {segments.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => goToSegment(i)}
-              className={`ll-shadow-player-dot ${
-                i === currentIdx ? "is-current" : i < currentIdx ? "is-done" : ""
-              }`}
-              aria-label={`Đến đoạn ${i + 1}`}
+        <div style={{ padding: "32px", display: "flex", flexDirection: "column", gap: "32px", flex: 1, justifyContent: "center", maxWidth: "900px", margin: "0 auto", width: "100%" }}>
+          <div style={{ aspectRatio: "16/9", background: "black", borderRadius: "24px", overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.15)", width: "100%" }}>
+            <iframe
+              ref={videoRef}
+              src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&controls=0&disablekb=1&fs=0&modestbranding=1&rel=0&playsinline=1`}
+              allow="autoplay; encrypted-media"
+              title={title}
+              style={{ width: "100%", height: "100%", border: "none" }}
             />
-          ))}
-        </div>
+          </div>
 
-        {/* Video */}
-        <div className="ll-shadow-player-video">
-          <iframe
-            ref={videoRef}
-            src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&controls=0&disablekb=1&fs=0&modestbranding=1&rel=0&playsinline=1`}
-            allow="autoplay; encrypted-media"
-            title={title}
-          />
-        </div>
+          <div style={{ textAlign: "center", minHeight: "120px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+            <KaraokeLine text={currentSegment.text_en} wordDiffs={wordDiffs} karaokeIdx={karaokeIdx} />
+            {currentSegment.text_vi && (
+              <p style={{ fontSize: "16px", color: "var(--muted)", marginTop: "16px", fontWeight: 500 }}>{currentSegment.text_vi}</p>
+            )}
+          </div>
 
-        {/* Karaoke target text */}
-        <div className="ll-shadow-player-target">
-          <KaraokeLine
-            text={currentSegment.text_en}
-            wordDiffs={wordDiffs}
-            karaokeIdx={karaokeIdx}
-          />
-          {currentSegment.text_vi && (
-            <p className="ll-shadow-player-target-vi">{currentSegment.text_vi}</p>
+          {isAutoLoop && (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <LoopStatus mode={loopMode} attempts={loopAttempts} usedAll={usedAllAttempts} isRecording={isRecording} />
+            </div>
           )}
+
+          <div className="ll-shadow-player-controls" style={{ marginTop: "0" }}>
+            <button type="button" onClick={prev} disabled={currentIdx === 0} className="ll-shadow-player-step">◀</button>
+            <button type="button" onClick={() => setPlaybackRate((r) => (r === 1 ? 0.75 : r === 0.75 ? 0.5 : 1))} className="ll-shadow-player-rate">{playbackRate}×</button>
+            <button type="button" onClick={isAutoLoop ? runAutoLoopStep : handleManualPlay} className="ll-shadow-player-play" disabled={loopMode === "playing" || loopMode === "recording"}>▶</button>
+            {!isAutoLoop && (
+              <button type="button" onClick={toggleRecording} disabled={!recognitionSupported || micPermission === "denied"} className={`ll-shadow-player-record ${isRecording ? "is-recording" : ""}`}>
+                {isRecording ? "■" : "●"}
+              </button>
+            )}
+            <button type="button" onClick={next} disabled={currentIdx === segments.length - 1} className="ll-shadow-player-step">▶</button>
+            <button type="button" onClick={toggleAutoLoop} className={`ll-shadow-player-loop ${isAutoLoop ? "is-on" : ""}`}>
+              🔁 {isAutoLoop ? "Tự động" : "Thủ công"}
+            </button>
+            <button type="button" onClick={skipSegment} className="ll-shadow-player-skip">Bỏ qua ⏭</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── CỘT PHẢI: PHÂN TÍCH & CÔNG CỤ (25%) ── */}
+      <div style={{ width: "360px", borderLeft: "1px solid var(--line)", background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+        
+        <div style={{ padding: "24px", flex: 1, display: "flex", flexDirection: "column", gap: "24px" }}>
+          
+          <div>
+            <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700 }}>Phân tích phát âm</h3>
+            
+            <AnimatePresence mode="wait">
+              {transcript && score ? (
+                <motion.div
+                  key={`score-${currentIdx}-${loopAttempts}`}
+                  initial={{ y: 16, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -8, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+                >
+                  <div style={{ padding: "16px", background: "white", borderRadius: "16px", border: "1px solid var(--line)" }}>
+                    <div style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600, marginBottom: "8px" }}>BẠN VỪA ĐỌC:</div>
+                    <div style={{ fontSize: "15px", color: "var(--ink)", lineHeight: 1.5 }}>"{transcript}"</div>
+                  </div>
+                  
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <div style={{ flex: 1, padding: "20px 16px", background: scoreClass(score.overall) === "is-great" ? "rgba(16,185,129,0.1)" : scoreClass(score.overall) === "is-ok" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)", borderRadius: "16px", textAlign: "center", border: `1px solid ${scoreClass(score.overall) === "is-great" ? "rgba(16,185,129,0.3)" : scoreClass(score.overall) === "is-ok" ? "rgba(245,158,11,0.3)" : "rgba(239,68,68,0.3)"}` }}>
+                      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink)", opacity: 0.7, marginBottom: "4px" }}>ĐIỂM TỔNG</div>
+                      <div style={{ fontSize: "32px", fontWeight: 800, color: scoreClass(score.overall) === "is-great" ? "#059669" : scoreClass(score.overall) === "is-ok" ? "#d97706" : "#dc2626" }}>{score.overall}%</div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div style={{ padding: "16px", background: "white", borderRadius: "16px", border: "1px solid var(--line)", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", marginBottom: "4px" }}>CHÍNH XÁC</div>
+                      <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--ink)" }}>{score.accuracy}%</div>
+                    </div>
+                    <div style={{ padding: "16px", background: "white", borderRadius: "16px", border: "1px solid var(--line)", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", marginBottom: "4px" }}>TRÔI CHẢY</div>
+                      <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--ink)" }}>{score.fluency}%</div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <div style={{ padding: "32px", textAlign: "center", background: "rgba(0,0,0,0.02)", borderRadius: "16px", border: "1px dashed var(--line)" }}>
+                  <div style={{ fontSize: "32px", opacity: 0.5, marginBottom: "12px" }}>🎤</div>
+                  <div style={{ fontSize: "14px", color: "var(--muted)", fontWeight: 500, lineHeight: 1.5 }}>
+                    Đọc đoạn thoại để xem bảng phân tích<br/>và điểm số chi tiết tại đây.
+                  </div>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div style={{ padding: "24px", background: "white", borderRadius: "20px", border: "1px solid var(--line)" }}>
+            <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "12px", fontWeight: 700 }}>Từ điển Mini</h3>
+            <p style={{ fontSize: "13px", color: "var(--soft)", lineHeight: 1.5, margin: 0 }}>
+              💡 Mẹo: Ở các bản cập nhật sau, bạn có thể click vào bất kỳ từ nào trong câu (ở cột giữa) để xem phiên âm IPA và nghĩa tiếng Việt ngay tại đây.
+            </p>
+          </div>
         </div>
 
-        {/* Status banner */}
-        {isAutoLoop && (
-          <LoopStatus
-            mode={loopMode}
-            attempts={loopAttempts}
-            usedAll={usedAllAttempts}
-            isRecording={isRecording}
-          />
-        )}
-
-        {/* Controls */}
-        <div className="ll-shadow-player-controls">
-          <button
-            type="button"
-            onClick={prev}
-            disabled={currentIdx === 0}
-            className="ll-shadow-player-step"
-            aria-label="Đoạn trước"
-          >
-            ◀
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setPlaybackRate((r) => (r === 1 ? 0.75 : r === 0.75 ? 0.5 : 1))
-            }
-            className="ll-shadow-player-rate"
-            title="Đổi tốc độ"
-          >
-            {playbackRate}×
-          </button>
-
-          <button
-            type="button"
-            onClick={isAutoLoop ? runAutoLoopStep : handleManualPlay}
-            className="ll-shadow-player-play"
-            aria-label="Bắt đầu / phát lại"
-            disabled={loopMode === "playing" || loopMode === "recording"}
-          >
-            ▶
-          </button>
-
-          {!isAutoLoop && (
-            <button
-              type="button"
-              onClick={toggleRecording}
-              disabled={!recognitionSupported || micPermission === "denied"}
-              className={`ll-shadow-player-record ${isRecording ? "is-recording" : ""}`}
-              aria-label={isRecording ? "Dừng ghi âm" : "Bắt đầu ghi âm"}
-            >
-              {isRecording ? "■" : "●"}
+        <div style={{ padding: "24px", borderTop: "1px solid var(--line)", background: "white" }}>
+          {(!isAutoLoop || usedAllAttempts) && transcript && score ? (
+            currentIdx < segments.length - 1 ? (
+              <button type="button" onClick={recordCompletionAndAdvance} style={{ width: "100%", padding: "16px", background: "var(--ink)", color: "white", borderRadius: "12px", fontWeight: 600, border: "none", cursor: "pointer", fontSize: "15px" }}>
+                Hoàn thành & Sang đoạn tiếp →
+              </button>
+            ) : (
+              <button type="button" onClick={onClose} style={{ width: "100%", padding: "16px", background: "#10b981", color: "white", borderRadius: "12px", fontWeight: 600, border: "none", cursor: "pointer", fontSize: "15px" }}>
+                Hoàn tất bài học 🎉
+              </button>
+            )
+          ) : (
+            <button type="button" disabled style={{ width: "100%", padding: "16px", background: "var(--page)", color: "var(--muted)", borderRadius: "12px", fontWeight: 600, border: "1px solid var(--line)", cursor: "not-allowed", fontSize: "15px" }}>
+              Chờ bạn luyện tập...
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={next}
-            disabled={currentIdx === segments.length - 1}
-            className="ll-shadow-player-step"
-            aria-label="Đoạn sau"
-          >
-            ▶
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleAutoLoop}
-            className={`ll-shadow-player-loop ${isAutoLoop ? "is-on" : ""}`}
-            title={isAutoLoop ? "Tắt lặp tự động" : "Bật lặp tự động"}
-          >
-            🔁 {isAutoLoop ? "Tự động" : "Thủ công"}
-          </button>
-
-          <button
-            type="button"
-            onClick={skipSegment}
-            className="ll-shadow-player-skip"
-            title="Bỏ qua đoạn này"
-          >
-            Bỏ qua ⏭
-          </button>
         </div>
-
-        {!recognitionSupported && (
-          <div className="ll-shadow-player-fallback">
-            Trình duyệt của bạn không hỗ trợ ghi âm để chấm tự động. Hãy mở
-            trên Chrome / Edge / Safari để dùng đầy đủ tính năng. Trong khi
-            đó, bạn vẫn có thể nghe và đọc theo, sau đó dùng nút <strong>
-            Bỏ qua ⏭</strong> để chuyển đoạn.
-          </div>
-        )}
-
-        {/* Score panel */}
-        <AnimatePresence mode="wait">
-          {transcript && score && (
-            <motion.div
-              key={`score-${currentIdx}-${loopAttempts}`}
-              className="ll-shadow-player-score"
-              initial={{ y: 16, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -8, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="ll-shadow-player-userline">
-                <span className="ll-shadow-player-userlbl">Bạn vừa đọc:</span>
-                <span className="ll-shadow-player-usertxt">{transcript}</span>
-              </div>
-
-              <div className="ll-shadow-player-scorebar">
-                <span className="ll-shadow-player-scorebar-lbl">Điểm tổng</span>
-                <span
-                  className={`ll-shadow-player-scorebar-num ${scoreClass(score.overall)}`}
-                >
-                  {score.overall}%
-                </span>
-              </div>
-
-              <div className="ll-shadow-player-subscores">
-                <div>
-                  <div className="ll-shadow-player-sublbl">Chính xác</div>
-                  <div className="ll-shadow-player-subnum">{score.accuracy}%</div>
-                </div>
-                <div>
-                  <div className="ll-shadow-player-sublbl">Trôi chảy</div>
-                  <div className="ll-shadow-player-subnum">{score.fluency}%</div>
-                </div>
-              </div>
-
-              {(!isAutoLoop || usedAllAttempts) && (
-                <div className="ll-shadow-player-actions">
-                  {currentIdx < segments.length - 1 ? (
-                    <button
-                      type="button"
-                      onClick={recordCompletionAndAdvance}
-                      className="ll-shadow-player-next-cta"
-                    >
-                      Đoạn tiếp theo →
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="ll-shadow-player-next-cta"
-                    >
-                      Hoàn tất clip →
-                    </button>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
