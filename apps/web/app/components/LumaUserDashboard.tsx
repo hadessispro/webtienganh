@@ -25,6 +25,8 @@ import {
 } from "../lib/product-data";
 import { CoursePathGrid } from "./CoursePathGrid";
 import { CoursesViewV2 } from "./CoursesViewV2";
+import { LessonsViewV2 } from "./LessonsViewV2";
+import { PracticeViewV2 } from "./PracticeViewV2";
 import { GroupsView } from "./GroupsView";
 import { ShadowingView } from "./ShadowingView";
 import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
@@ -2308,36 +2310,11 @@ export function LumaUserDashboard() {
           <div className="ll-page">
             <header className="ll-topbar ll-glass">
               <div>
-                <div className="ll-label">Học tập · {selectedCourse?.lessons ?? 28} bài</div>
+                <div className="ll-label">Học tập · Bài học theo lộ trình</div>
                 <h1>Bài học của <span className="ll-accent">bạn</span></h1>
               </div>
-              <button className="ll-btn primary" onClick={() => todayTasks.forEach((task) => toggleTask(task.id))} type="button">Đánh dấu xong</button>
             </header>
-            <div className="ll-filter-bar ll-glass">
-              <div className="ll-search-shell"><LineIcon name="search" /><input placeholder="Tìm bài học, chủ đề, từ vựng..." /></div>
-              <button className="active" type="button">Tất cả</button>
-              <button type="button">Đang học</button>
-              <button type="button">Hoàn thành</button>
-            </div>
-            <div className="ll-card-grid ll-grid-3">
-              {[...todayTasks, ...learningPath.slice(0, 4)].map((item, index) => {
-                const id = item.id;
-                const done = profile.completedTaskIds.includes(id);
-                return (
-                  <article className="ll-lesson-card ll-glass" key={id}>
-                    <div className="ll-lesson-card-header">
-                      <IconBadge name={lessonBadges[index % lessonBadges.length]} />
-                      <span className={done ? "ll-tag" : "ll-tag yellow"}>{done ? "Hoàn thành" : index === 0 ? "Đang học" : "Mới"}</span>
-                    </div>
-                    <h2>{item.title}</h2>
-                    <p>{"minutes" in item ? item.minutes : profile.dailyMinutes} phút · {goalLabels[profile.goal]}</p>
-                    <ProgressBar value={done ? 100 : index === 0 ? 65 : 0} />
-                    <div className="ll-tags"><span className="ll-tag gray">{profile.level}</span><span className="ll-tag gray">Office</span></div>
-                    <button className="ll-btn mint" onClick={() => toggleTask(id)} type="button">{done ? "Mở lại" : "Hoàn thành"}</button>
-                  </article>
-                );
-              })}
-            </div>
+            <LessonsViewV2 />
           </div>
         ) : null}
 
@@ -2357,48 +2334,11 @@ export function LumaUserDashboard() {
           <div className="ll-page ll-practice-page">
             <header className="ll-topbar ll-glass">
               <div>
-                <div className="ll-label">Đề luyện · 8 đề tuần này</div>
+                <div className="ll-label">Đề luyện · Tự sinh từ lộ trình của bạn</div>
                 <h1>Luyện <span className="ll-accent">phản xạ</span></h1>
               </div>
-              <div className="ll-topbar-actions">
-                <button className="ll-btn ghost" type="button">Lịch sử</button>
-                <button className="ll-btn primary" type="button">Tạo đề mới</button>
-              </div>
             </header>
-            <div className="ll-card-grid ll-grid-3 ll-practice-metrics">
-              <section className="ll-metric-card ll-glass">
-                <div className="ll-metric-label">Đề đã làm</div>
-                <div className="ll-metric-row"><span>tuần này</span><strong>12</strong></div>
-                <div className="ll-metric-delta">▲ 3 so với tuần trước</div>
-              </section>
-              <section className="ll-metric-card ll-glass">
-                <div className="ll-metric-label">Điểm trung bình</div>
-                <div className="ll-metric-row"><span>/100 điểm</span><strong className="green">78.5</strong></div>
-                <div className="ll-metric-delta">▲ 4.1 điểm</div>
-              </section>
-              <section className="ll-metric-card ll-glass">
-                <div className="ll-metric-label">Chính xác</div>
-                <div className="ll-metric-row"><span>tổng đáp án</span><strong className="green">82%</strong></div>
-                <div className="ll-metric-delta">Trên mức trung bình</div>
-              </section>
-            </div>
-            <section className="ll-quiz-history ll-glass">
-              <div className="ll-quiz-history-head">
-                <h2>Đề gần đây</h2>
-                <button className="ll-speed-row-button" type="button">Xem tất cả →</button>
-              </div>
-              {recentQuizRows.map((quiz) => (
-                <article className="ll-quiz-history-row" key={quiz.name}>
-                  <IconBadge name={quiz.icon} />
-                  <div>
-                    <h3>{quiz.name}</h3>
-                    <p>{quiz.meta}</p>
-                  </div>
-                  <strong>{quiz.score}</strong>
-                  <button className="ll-speed-row-button" type="button">Làm lại</button>
-                </article>
-              ))}
-            </section>
+            <PracticeViewV2 />
           </div>
         ) : null}
 
