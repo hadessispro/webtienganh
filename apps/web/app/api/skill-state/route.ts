@@ -6,7 +6,7 @@ export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const states = await prisma.userSkillState.findMany({
+  const states = await prisma.skillState.findMany({
     where: { userId: session.user.id }
   })
   
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   // Upsert all skill states
   for (const [skillId, stateData] of Object.entries(states)) {
     const data: any = stateData
-    await prisma.userSkillState.upsert({
+    await prisma.skillState.upsert({
       where: {
         userId_skillId: {
           userId: session.user.id,
