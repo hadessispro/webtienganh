@@ -88,6 +88,7 @@ export function ShadowingPlayer({
   // Vocab integration state
   const [vocabList, setVocabList] = useState<any[]>([]);
   const [selectedVocab, setSelectedVocab] = useState<any | null>(null);
+  const [isVocabLoading, setIsVocabLoading] = useState(false);
 
   // AI analysis state
   const [aiData, setAiData] = useState<{ phrases: any[]; grammar: any[] } | null>(null);
@@ -481,6 +482,57 @@ export function ShadowingPlayer({
     );
   }
 
+  // Fetch dictionary from internal API
+  const handleWordClick = async (word: string) => {
+    // clean word
+    const cleanW = word.toLowerCase().replace(/[^a-z0-9-']/g, "");
+    if (!cleanW) return;
+    
+    setIsVocabLoading(true);
+    
+    // Check if it's already in vocabList (from DB)
+    const localMatched = vocabList.find(v => v.word.toLowerCase() === cleanW);
+    
+    try {
+      if (localMatched) {
+        setSelectedVocab({
+          word: localMatched.word,
+          phonetic: localMatched.pronunciation_ipa,
+          pos: localMatched.pos,
+          definition: localMatched.definition_vi,
+          level: localMatched.level
+        });
+      } else {
+        // Fetch from FreeDictionary wrapper
+        const res = await fetch(`/api/vocab/${cleanW}`);
+        if (res.ok) {
+          const data = await res.json();
+          const firstDef = data.definitions?.[0];
+          setSelectedVocab({
+            word: data.word,
+            phonetic: data.phonetic || data.audio ? "🎵" : "",
+            pos: firstDef?.partOfSpeech || "word",
+            definition: firstDef?.definition || "No definition found.",
+            level: "Tra cứu"
+          });
+        } else {
+          // fallback UI if not found
+          setSelectedVocab({
+            word: cleanW,
+            phonetic: "",
+            pos: "unknown",
+            definition: "Không tìm thấy từ này trong từ điển.",
+            level: "?"
+          });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsVocabLoading(false);
+    }
+  };
+
   /* ── Render ────────────────────────────────────────────────── */
   return (
     <div className="ll-shadow-workspace" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--page)", display: "flex", width: "100vw", height: "100vh", overflow: "hidden" }}>
@@ -525,50 +577,6 @@ export function ShadowingPlayer({
             </div>
           ) : (
             <div style={{ fontSize: "12px", color: "var(--muted)" }}>Không tìm thấy từ vựng khó.</div>
-          )}
-        </div>
-
-        {/* Cụm từ & Ngữ pháp (AI) */}
-        <div style={{ padding: "24px", borderBottom: "1px solid var(--line)" }}>
-          <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "16px" }}>✨</span> Phân tích AI
-          </h3>
-          
-          {isAiLoading ? (
-            <div style={{ fontSize: "13px", color: "var(--muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: "8px" }}>
-              <div className="ll-shadow-spinner" style={{ width: "14px", height: "14px" }} /> DeepSeek đang phân tích...
-            </div>
-          ) : !aiData || (aiData.phrases.length === 0 && aiData.grammar.length === 0) ? (
-            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Bài hội thoại cơ bản.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {aiData.phrases.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink)", marginBottom: "8px", textTransform: "uppercase" }}>Cụm từ</h4>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {aiData.phrases.map((p, idx) => (
-                      <div key={idx} style={{ background: "var(--glass)", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}>
-                        <div style={{ fontWeight: 700, fontSize: "13px", color: "#f59e0b" }}>{p.phrase}</div>
-                        <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>{p.definition_vi}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {aiData.grammar.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink)", marginBottom: "8px", textTransform: "uppercase" }}>Ngữ pháp</h4>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {aiData.grammar.map((g, idx) => (
-                      <div key={idx} style={{ background: "var(--glass)", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}>
-                        <div style={{ fontWeight: 700, fontSize: "13px", color: "#3b82f6" }}>{g.structure}</div>
-                        <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>{g.explanation_vi}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
           )}
         </div>
 
@@ -620,7 +628,7 @@ export function ShadowingPlayer({
           </div>
 
           <div style={{ textAlign: "center", minHeight: "120px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-            <KaraokeLine text={currentSegment.text_en} wordDiffs={wordDiffs} karaokeIdx={karaokeIdx} vocabList={vocabList} onVocabClick={setSelectedVocab} />
+            <KaraokeLine text={currentSegment.text_en} wordDiffs={wordDiffs} karaokeIdx={karaokeIdx} vocabList={vocabList} onVocabClick={handleWordClick} />
             {currentSegment.text_vi && (
               <p style={{ fontSize: "16px", color: "var(--muted)", marginTop: "16px", fontWeight: 500 }}>{currentSegment.text_vi}</p>
             )}
@@ -702,25 +710,74 @@ export function ShadowingPlayer({
             </AnimatePresence>
           </div>
 
+          {/* Từ điển Mini */}
           <div style={{ padding: "24px", background: "white", borderRadius: "20px", border: "1px solid var(--line)" }}>
             <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "12px", fontWeight: 700 }}>Từ điển Mini</h3>
-            {selectedVocab ? (
+            {isVocabLoading ? (
+               <div style={{ fontSize: "13px", color: "var(--muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: "8px" }}>
+                 <div className="ll-shadow-spinner" style={{ width: "14px", height: "14px" }} /> Đang tra từ...
+               </div>
+            ) : selectedVocab ? (
               <div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--ink)" }}>{selectedVocab.word}</span>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "white", background: "#10b981", padding: "2px 6px", borderRadius: "4px" }}>{selectedVocab.level}</span>
+                  <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--ink)", textTransform: "lowercase" }}>{selectedVocab.word}</span>
+                  {selectedVocab.level && <span style={{ fontSize: "11px", fontWeight: 700, color: "white", background: "#10b981", padding: "2px 6px", borderRadius: "4px" }}>{selectedVocab.level}</span>}
                 </div>
                 <div style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "12px", fontStyle: "italic" }}>
-                  {selectedVocab.pos} • {selectedVocab.pronunciation_ipa}
+                  {selectedVocab.pos} {selectedVocab.phonetic ? `• ${selectedVocab.phonetic}` : ""}
                 </div>
                 <div style={{ fontSize: "15px", color: "var(--ink)", lineHeight: 1.5 }}>
-                  {selectedVocab.definition_vi}
+                  {selectedVocab.definition}
                 </div>
               </div>
             ) : (
               <p style={{ fontSize: "13px", color: "var(--soft)", lineHeight: 1.5, margin: 0 }}>
-                💡 Mẹo: Ở các bản cập nhật sau, bạn có thể click vào bất kỳ từ nào được in đậm trong câu (ở cột giữa) để xem phiên âm IPA và nghĩa tiếng Việt ngay tại đây.
+                💡 Mẹo: Bấm vào <strong>bất kỳ từ nào</strong> trên phụ đề để tra từ điển FreeDictionary ngay lập tức!
               </p>
+            )}
+          </div>
+          
+          {/* Cụm từ & Ngữ pháp (AI) */}
+          <div style={{ padding: "24px", background: "white", borderRadius: "20px", border: "1px solid var(--line)", marginTop: "16px" }}>
+            <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "16px" }}>✨</span> Phân tích AI
+            </h3>
+            
+            {isAiLoading ? (
+              <div style={{ fontSize: "13px", color: "var(--muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div className="ll-shadow-spinner" style={{ width: "14px", height: "14px" }} /> DeepSeek đang phân tích...
+              </div>
+            ) : !aiData || (aiData.phrases.length === 0 && aiData.grammar.length === 0) ? (
+              <div style={{ fontSize: "12px", color: "var(--muted)" }}>Bài hội thoại cơ bản.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {aiData.phrases.length > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink)", marginBottom: "8px", textTransform: "uppercase" }}>Cụm từ</h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {aiData.phrases.map((p, idx) => (
+                        <div key={idx} style={{ background: "var(--glass)", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}>
+                          <div style={{ fontWeight: 700, fontSize: "13px", color: "#f59e0b" }}>{p.phrase}</div>
+                          <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>{p.definition_vi}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {aiData.grammar.length > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink)", marginBottom: "8px", textTransform: "uppercase" }}>Ngữ pháp</h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {aiData.grammar.map((g, idx) => (
+                        <div key={idx} style={{ background: "var(--glass)", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}>
+                          <div style={{ fontWeight: 700, fontSize: "13px", color: "#3b82f6" }}>{g.structure}</div>
+                          <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>{g.explanation_vi}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -769,7 +826,7 @@ function KaraokeLine({
     <p className="ll-shadow-karaoke">
       {words.map((w, i) => {
         const diff = wordDiffs[i];
-        const cleanW = w.toLowerCase().replace(/[.,!?()[\]{}"']/g, "");
+        const cleanW = w.toLowerCase().replace(/[^a-z0-9-']/g, "");
         const matchedVocab = vocabList.find(v => v.word.toLowerCase() === cleanW);
         const isVocab = !!matchedVocab;
 
@@ -787,8 +844,14 @@ function KaraokeLine({
           <span 
             key={i} 
             className={cls}
-            onClick={() => isVocab && onVocabClick(matchedVocab)}
-            style={isVocab ? { textDecoration: 'underline', textDecorationThickness: '2px', textUnderlineOffset: '4px', cursor: 'pointer', fontWeight: 800 } : undefined}
+            onClick={() => onVocabClick(cleanW)}
+            style={{ 
+              cursor: 'pointer', 
+              textDecoration: isVocab ? 'underline' : 'none', 
+              textDecorationThickness: '2px', 
+              textUnderlineOffset: '4px', 
+              fontWeight: isVocab ? 800 : 'inherit' 
+            }}
           >
             {w}
             {i < words.length - 1 ? " " : ""}
