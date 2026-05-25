@@ -3,29 +3,26 @@
 /**
  * Path: apps/web/app/components/ShadowingPlayer.tsx
  *
- * Full-screen shadowing player with 4 core features (PR-Shadowing-V3):
+ * Full-screen shadowing player.
  *
- *  1. AUTO-LOOP — when isAutoLoop is on, the player automatically replays
- *     the current segment in a loop until the user passes (score ≥ 70 + low
- *     missed-rate) OR they manually advance. Removes the "click play, record,
- *     click play, record" friction.
+ * 2026-05-25 (V3.1) fixes user-reported bugs:
  *
- *  2. KARAOKE TRANSCRIPT — the script for the current segment is rendered
- *     INLINE with per-word highlighting:
- *        green   = matched
- *        yellow  = approximate (close pronunciation)
- *        red     = missed
- *        bold    = current word being spoken (from YT currentTime)
+ *   1. Auto-loop got STUCK at "Đến lượt bạn" when SpeechRecognition's
+ *      onend fired without a result (user spoke too softly / mic
+ *      permission still pending / silent room). Now we add an
+ *      8-second timeout AND wire onend to gracefully reset.
  *
- *  3. ASU INTEGRATION — on segment complete, we call
- *     recordShadowingCompletion() so vocab the user is currently studying
- *     gets a small confidence bump when it appears in the clip.
+ *   2. YouTube embed often loads MUTED because Chrome's autoplay
+ *      policy. Now on first ▶ we explicitly send unmute + setVolume.
  *
- *  4. WORD-LEVEL FEEDBACK — score panel now shows the actual word list
- *     with each word's status, not just the linear diff.
+ *   3. The recognition handler stale-closed over isAutoLoop. Moved
+ *      the dynamic state out of the closure via a ref.
  *
- * Speech recognition still uses Web Speech API. Browsers that lack it
- * (Firefox, some mobile) get a friendly fallback.
+ *   4. Added "Bỏ qua đoạn này" skip button — never let the user
+ *      get stuck if a segment is too hard or the mic just won't work.
+ *
+ *   5. Mic permission state surfaced clearly: "Trình duyệt chưa cấp
+ *      mic — bấm icon 🎤 trên thanh URL để cho phép".
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -65,6 +62,10 @@ declare global {
 
 const AUTOLOOP_PASS_THRESHOLD = 70;
 const MAX_AUTOLOOP_ATTEMPTS = 5;
+const RECOGNITION_TIMEOUT_MS = 8000; // give up after 8s of silence
+
+type LoopMode = "idle" | "playing" | "recording" | "scored";
+type MicPermissionState = "unknown" | "granted" | "denied" | "pending";
 
 export function ShadowingPlayer({
   clipId,
@@ -80,25 +81,60 @@ export function ShadowingPlayer({
   const [score, setScore] = useState<ShadowScore | null>(null);
   const [wordDiffs, setWordDiffs] = useState<WordDiff[]>([]);
   const [recognitionSupported, setRecognitionSupported] = useState(true);
+  const [micPermission, setMicPermission] =
+    useState<MicPermissionState>("unknown");
   const [playbackRate, setPlaybackRate] = useState<1 | 0.75 | 0.5>(1);
 
   // Auto-loop state
   const [isAutoLoop, setIsAutoLoop] = useState(true);
   const [loopAttempts, setLoopAttempts] = useState(0);
-  const [loopMode, setLoopMode] = useState<"idle" | "playing" | "recording" | "scored">(
-    "idle",
-  );
+  const [loopMode, setLoopMode] = useState<LoopMode>("idle");
 
   const videoRef = useRef<HTMLIFrameElement>(null);
   const recognitionRef = useRef<any>(null);
   const playTimeoutRef = useRef<number | null>(null);
+  const recognitionTimeoutRef = useRef<number | null>(null);
+  // Refs for state-that-handlers-need so we don't re-create the
+  // recognition object on every render.
+  const isAutoLoopRef = useRef(isAutoLoop);
+  const loopAttemptsRef = useRef(loopAttempts);
+  const currentIdxRef = useRef(currentIdx);
+  const gotResultRef = useRef(false);
+  const youtubeUnmutedRef = useRef(false);
 
-  // Subscribe to YouTube currentTime for karaoke word highlight
+  useEffect(() => {
+    isAutoLoopRef.current = isAutoLoop;
+  }, [isAutoLoop]);
+  useEffect(() => {
+    loopAttemptsRef.current = loopAttempts;
+  }, [loopAttempts]);
+  useEffect(() => {
+    currentIdxRef.current = currentIdx;
+  }, [currentIdx]);
+
+  // Subscribe to YouTube currentTime for karaoke
   const { currentTime, playerState } = useYouTubeTime(videoRef, true);
 
   const currentSegment = segments[currentIdx];
 
-  /* ── Speech recognition setup (per segment) ───────────────── */
+  /* ── Detect mic permission on mount ────────────────────────── */
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.permissions) {
+      return;
+    }
+    navigator.permissions
+      .query({ name: "microphone" as PermissionName })
+      .then((status) => {
+        setMicPermission(status.state as MicPermissionState);
+        status.onchange = () =>
+          setMicPermission(status.state as MicPermissionState);
+      })
+      .catch(() => {
+        // Some browsers don't support querying mic perm — silent.
+      });
+  }, []);
+
+  /* ── Speech recognition (created ONCE per segment) ─────────── */
   useEffect(() => {
     if (typeof window === "undefined") return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -111,19 +147,37 @@ export function ShadowingPlayer({
     r.interimResults = false;
     r.lang = "en-US";
     r.onresult = (event: any) => {
-      const text = event.results[0][0].transcript;
+      gotResultRef.current = true;
+      const text = event.results[0][0].transcript ?? "";
       setTranscript(text);
       processScore(text);
     };
     r.onerror = (e: any) => {
-      console.warn("[shadow] recognition error", e?.error);
+      const err = e?.error ?? "unknown";
+      console.warn("[shadow] recognition error:", err);
       setIsRecording(false);
-      if (isAutoLoop) {
-        // Don't trap the user — exit loop mode
-        setLoopMode("idle");
+      if (err === "not-allowed" || err === "permission-denied") {
+        setMicPermission("denied");
+      }
+      // Exit loop mode so user isn't trapped
+      setLoopMode("idle");
+      clearRecognitionTimeout();
+    };
+    r.onend = () => {
+      setIsRecording(false);
+      clearRecognitionTimeout();
+      // If we never got a result, fall back to scored:idle so the user
+      // can retry / skip instead of being stuck.
+      if (!gotResultRef.current) {
+        if (isAutoLoopRef.current) {
+          // Count this as a failed attempt, but don't auto-retry
+          // because there's no signal that anything was heard.
+          setLoopMode("idle");
+        } else {
+          setLoopMode("idle");
+        }
       }
     };
-    r.onend = () => setIsRecording(false);
     recognitionRef.current = r;
     return () => {
       try {
@@ -135,15 +189,23 @@ export function ShadowingPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIdx]);
 
-  /* ── Clear pending timers when leaving segment ─────────────── */
+  /* ── Cleanup timeouts on unmount + segment change ──────────── */
   useEffect(() => {
     return () => {
       if (playTimeoutRef.current) {
         clearTimeout(playTimeoutRef.current);
         playTimeoutRef.current = null;
       }
+      clearRecognitionTimeout();
     };
   }, [currentIdx]);
+
+  const clearRecognitionTimeout = () => {
+    if (recognitionTimeoutRef.current) {
+      clearTimeout(recognitionTimeoutRef.current);
+      recognitionTimeoutRef.current = null;
+    }
+  };
 
   /* ── YouTube postMessage helpers ───────────────────────────── */
   const sendCmd = (func: string, args: any[] = []) => {
@@ -154,13 +216,27 @@ export function ShadowingPlayer({
     );
   };
 
+  const ensureUnmuted = () => {
+    // Chrome autoplay policy mutes the iframe by default. Unmute on
+    // user-initiated play (this satisfies the autoplay policy).
+    if (!youtubeUnmutedRef.current) {
+      sendCmd("unMute");
+      sendCmd("setVolume", [100]);
+      youtubeUnmutedRef.current = true;
+    }
+  };
+
   /* ── Play the current segment once ─────────────────────────── */
   const playSegmentOnce = (onEnd?: () => void) => {
     if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
+    ensureUnmuted();
     sendCmd("setPlaybackRate", [playbackRate]);
     sendCmd("seekTo", [currentSegment.start, true]);
     sendCmd("playVideo");
-    const durMs = Math.max(800, (currentSegment.end - currentSegment.start) * 1000 / playbackRate);
+    const durMs = Math.max(
+      800,
+      ((currentSegment.end - currentSegment.start) * 1000) / playbackRate,
+    );
     playTimeoutRef.current = window.setTimeout(() => {
       sendCmd("pauseVideo");
       playTimeoutRef.current = null;
@@ -168,16 +244,51 @@ export function ShadowingPlayer({
     }, durMs);
   };
 
+  /* ── Start recognition with timeout safety net ─────────────── */
+  const startRecognitionSafe = () => {
+    if (!recognitionRef.current) return;
+    gotResultRef.current = false;
+    try {
+      recognitionRef.current.start();
+      setIsRecording(true);
+      setMicPermission((p) => (p === "unknown" ? "pending" : p));
+      // Safety timeout — force stop if browser silently hangs
+      clearRecognitionTimeout();
+      recognitionTimeoutRef.current = window.setTimeout(() => {
+        try {
+          recognitionRef.current?.stop();
+        } catch {
+          // ignore
+        }
+        // onend will fire and handle the rest
+      }, RECOGNITION_TIMEOUT_MS);
+    } catch (e) {
+      console.warn("[shadow] could not start recognition", e);
+      setIsRecording(false);
+      setLoopMode("idle");
+    }
+  };
+
+  const stopRecognition = () => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      // ignore
+    }
+    clearRecognitionTimeout();
+  };
+
+  /* ── Manual play (non-loop) ────────────────────────────────── */
   const handleManualPlay = () => {
     setLoopMode("playing");
     playSegmentOnce(() => setLoopMode("idle"));
   };
 
-  /* ── Auto-loop step ────────────────────────────────────────── */
+  /* ── Auto-loop one cycle ───────────────────────────────────── */
   const runAutoLoopStep = () => {
-    if (!isAutoLoop) return;
+    if (!isAutoLoopRef.current) return;
     if (!recognitionSupported) return;
-    if (loopAttempts >= MAX_AUTOLOOP_ATTEMPTS) return;
+    if (loopAttemptsRef.current >= MAX_AUTOLOOP_ATTEMPTS) return;
 
     setScore(null);
     setWordDiffs([]);
@@ -185,96 +296,81 @@ export function ShadowingPlayer({
     setLoopMode("playing");
 
     playSegmentOnce(() => {
-      // After segment finishes playing, start recognition
+      // After segment finishes, start recognition
       setLoopMode("recording");
-      try {
-        recognitionRef.current?.start();
-        setIsRecording(true);
-      } catch (e) {
-        console.warn("[shadow] could not start recognition in autoloop", e);
-        setLoopMode("idle");
-      }
+      startRecognitionSafe();
     });
   };
 
-  /* ── Process a transcript through scoring ──────────────────── */
+  /* ── Process scoring + advance ─────────────────────────────── */
   const processScore = (userText: string) => {
-    const result = scoreShadowingAttempt(currentSegment.text_en, userText);
-    const inlineDiffs = scoreWordsInline(currentSegment.text_en, userText);
+    const segText = currentSegment.text_en;
+    const result = scoreShadowingAttempt(segText, userText);
+    const inlineDiffs = scoreWordsInline(segText, userText);
     setScore(result);
     setWordDiffs(inlineDiffs);
     setLoopMode("scored");
 
-    // Persist attempt (fire-and-forget)
+    // Persist attempt
     fetch("/api/shadowing/attempt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clipId,
-        segmentIdx: currentIdx,
+        segmentIdx: currentIdxRef.current,
         scoreJson: {
           ...result,
           topicIds,
-          segmentText: currentSegment.text_en,
-          attemptInLoop: loopAttempts + 1,
+          segmentText: segText,
+          attemptInLoop: loopAttemptsRef.current + 1,
         },
       }),
     }).catch(() => {});
 
     // Auto-advance check
-    if (isAutoLoop) {
+    if (isAutoLoopRef.current) {
       const advance = shouldAdvance(result, inlineDiffs, AUTOLOOP_PASS_THRESHOLD);
       if (advance) {
-        // Pass — record + move on after a short pause so user sees the score
-        setTimeout(() => {
-          recordCompletionAndAdvance();
-        }, 1400);
+        setTimeout(() => recordCompletionAndAdvance(), 1400);
       } else {
-        // Fail — bump attempts; if under limit, loop again
-        const nextAttempts = loopAttempts + 1;
+        const nextAttempts = loopAttemptsRef.current + 1;
         setLoopAttempts(nextAttempts);
         if (nextAttempts < MAX_AUTOLOOP_ATTEMPTS) {
-          setTimeout(() => {
-            runAutoLoopStep();
-          }, 1600);
+          setTimeout(() => runAutoLoopStep(), 1600);
+        } else {
+          // Used all attempts — surface the skip option
+          setLoopMode("scored");
         }
       }
     }
   };
 
-  /* ── Mark segment "done" and advance ───────────────────────── */
+  /* ── Mark complete + advance ───────────────────────────────── */
   const recordCompletionAndAdvance = () => {
-    // Boost vocab ASUs that appeared in this segment
     recordShadowingCompletion({
       clipId,
       transcriptText: currentSegment.text_en,
       topicIds,
     }).catch(() => {});
 
-    if (currentIdx < segments.length - 1) {
-      goToSegment(currentIdx + 1);
+    if (currentIdxRef.current < segments.length - 1) {
+      goToSegment(currentIdxRef.current + 1);
     } else {
-      // Last segment — close player after a moment
       setTimeout(() => onClose(), 800);
     }
   };
 
-  /* ── Manual recording toggle (non-loop mode) ───────────────── */
+  /* ── Manual mic toggle ─────────────────────────────────────── */
   const toggleRecording = () => {
     if (!recognitionSupported) return;
     if (isRecording) {
-      recognitionRef.current?.stop();
+      stopRecognition();
       setIsRecording(false);
     } else {
       setTranscript("");
       setScore(null);
       setWordDiffs([]);
-      try {
-        recognitionRef.current?.start();
-        setIsRecording(true);
-      } catch (e) {
-        console.warn("[shadow] could not start recognition", e);
-      }
+      startRecognitionSafe();
     }
   };
 
@@ -285,37 +381,41 @@ export function ShadowingPlayer({
       clearTimeout(playTimeoutRef.current);
       playTimeoutRef.current = null;
     }
+    clearRecognitionTimeout();
+    stopRecognition();
+    setIsRecording(false);
     setCurrentIdx(idx);
     setScore(null);
     setWordDiffs([]);
     setTranscript("");
     setLoopAttempts(0);
     setLoopMode("idle");
-    try {
-      recognitionRef.current?.stop();
-    } catch {
-      // ignore
-    }
-    setIsRecording(false);
   };
   const next = () => goToSegment(currentIdx + 1);
   const prev = () => goToSegment(currentIdx - 1);
 
-  /* ── Toggle auto-loop ──────────────────────────────────────── */
+  const skipSegment = () => {
+    // Skip is "give up this segment without bumping skill state".
+    if (currentIdx < segments.length - 1) {
+      goToSegment(currentIdx + 1);
+    } else {
+      onClose();
+    }
+  };
+
   const toggleAutoLoop = () => {
     setIsAutoLoop((v) => !v);
     setLoopAttempts(0);
     setLoopMode("idle");
   };
 
-  /* ── Karaoke: word currently being spoken in the video ─────── */
+  /* ── Karaoke current-word index (estimate) ─────────────────── */
   const karaokeIdx = useMemo(() => {
-    // Estimate which word in the segment is currently being heard by
-    // dividing elapsed time within the segment evenly across words.
-    // Imperfect but smooth — real word timestamps would need a
-    // forced-aligner.
-    if (playerState !== 1) return -1; // only highlight when playing
-    if (currentTime < currentSegment.start || currentTime > currentSegment.end + 0.5) {
+    if (playerState !== 1) return -1;
+    if (
+      currentTime < currentSegment.start ||
+      currentTime > currentSegment.end + 0.5
+    ) {
       return -1;
     }
     const words = currentSegment.text_en.trim().split(/\s+/).length;
@@ -324,6 +424,9 @@ export function ShadowingPlayer({
     const pct = Math.min(1, elapsed / total);
     return Math.min(words - 1, Math.floor(pct * words));
   }, [currentTime, currentSegment, playerState]);
+
+  const usedAllAttempts =
+    isAutoLoop && loopAttempts >= MAX_AUTOLOOP_ATTEMPTS;
 
   /* ── Render ────────────────────────────────────────────────── */
   return (
@@ -348,6 +451,14 @@ export function ShadowingPlayer({
           </button>
         </header>
 
+        {/* Mic permission warning */}
+        {recognitionSupported && micPermission === "denied" && (
+          <div className="ll-shadow-player-warning">
+            ⚠️ Trình duyệt đang chặn microphone. Bấm icon 🔒 hoặc 🎤 ở thanh
+            địa chỉ → chọn <strong>Cho phép</strong> → tải lại trang.
+          </div>
+        )}
+
         {/* Segment progress dots */}
         <div className="ll-shadow-player-dots">
           {segments.map((_, i) => (
@@ -367,7 +478,7 @@ export function ShadowingPlayer({
         <div className="ll-shadow-player-video">
           <iframe
             ref={videoRef}
-            src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&controls=0&disablekb=1&fs=0&modestbranding=1&rel=0`}
+            src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&controls=0&disablekb=1&fs=0&modestbranding=1&rel=0&playsinline=1`}
             allow="autoplay; encrypted-media"
             title={title}
           />
@@ -387,7 +498,12 @@ export function ShadowingPlayer({
 
         {/* Status banner */}
         {isAutoLoop && (
-          <LoopStatus mode={loopMode} attempts={loopAttempts} />
+          <LoopStatus
+            mode={loopMode}
+            attempts={loopAttempts}
+            usedAll={usedAllAttempts}
+            isRecording={isRecording}
+          />
         )}
 
         {/* Controls */}
@@ -427,7 +543,7 @@ export function ShadowingPlayer({
             <button
               type="button"
               onClick={toggleRecording}
-              disabled={!recognitionSupported}
+              disabled={!recognitionSupported || micPermission === "denied"}
               className={`ll-shadow-player-record ${isRecording ? "is-recording" : ""}`}
               aria-label={isRecording ? "Dừng ghi âm" : "Bắt đầu ghi âm"}
             >
@@ -453,12 +569,23 @@ export function ShadowingPlayer({
           >
             🔁 {isAutoLoop ? "Tự động" : "Thủ công"}
           </button>
+
+          <button
+            type="button"
+            onClick={skipSegment}
+            className="ll-shadow-player-skip"
+            title="Bỏ qua đoạn này"
+          >
+            Bỏ qua ⏭
+          </button>
         </div>
 
         {!recognitionSupported && (
           <div className="ll-shadow-player-fallback">
             Trình duyệt của bạn không hỗ trợ ghi âm để chấm tự động. Hãy mở
-            trên Chrome / Edge / Safari để dùng đầy đủ tính năng.
+            trên Chrome / Edge / Safari để dùng đầy đủ tính năng. Trong khi
+            đó, bạn vẫn có thể nghe và đọc theo, sau đó dùng nút <strong>
+            Bỏ qua ⏭</strong> để chuyển đoạn.
           </div>
         )}
 
@@ -466,7 +593,7 @@ export function ShadowingPlayer({
         <AnimatePresence mode="wait">
           {transcript && score && (
             <motion.div
-              key="score"
+              key={`score-${currentIdx}-${loopAttempts}`}
               className="ll-shadow-player-score"
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -498,14 +625,12 @@ export function ShadowingPlayer({
                 </div>
               </div>
 
-              {!isAutoLoop && (
+              {(!isAutoLoop || usedAllAttempts) && (
                 <div className="ll-shadow-player-actions">
                   {currentIdx < segments.length - 1 ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        recordCompletionAndAdvance();
-                      }}
+                      onClick={recordCompletionAndAdvance}
                       className="ll-shadow-player-next-cta"
                     >
                       Đoạn tiếp theo →
@@ -570,25 +695,43 @@ function KaraokeLine({
 function LoopStatus({
   mode,
   attempts,
+  usedAll,
+  isRecording,
 }: {
-  mode: "idle" | "playing" | "recording" | "scored";
+  mode: LoopMode;
   attempts: number;
+  usedAll: boolean;
+  isRecording: boolean;
 }) {
+  if (usedAll) {
+    return (
+      <div className="ll-shadow-player-loopstatus is-warn">
+        ⏭️ Đã thử {MAX_AUTOLOOP_ATTEMPTS} lần. Bấm <strong>Đoạn tiếp theo</strong> ở
+        thẻ điểm phía dưới hoặc <strong>Bỏ qua ⏭</strong> ở thanh điều khiển.
+      </div>
+    );
+  }
   const text = (() => {
     switch (mode) {
       case "playing":
         return "🔊 Đang phát đoạn — chuẩn bị đọc theo...";
       case "recording":
-        return "🎤 Đến lượt bạn! Đọc theo câu vừa nghe.";
+        return isRecording
+          ? "🎤 Đến lượt bạn! Đọc theo câu vừa nghe (có 8 giây)..."
+          : "🎤 Đang khởi tạo mic, chờ chút...";
       case "scored":
-        return attempts >= MAX_AUTOLOOP_ATTEMPTS
-          ? "⏭️ Đã đủ số lần thử. Chuyển đoạn tiếp theo bằng nút ▶ nhé."
-          : "✅ Đã chấm xong — chờ lặp lại lượt nữa.";
+        return "✅ Đã chấm xong — chuẩn bị lặp lần nữa.";
       default:
-        return "Nhấn ▶ để bắt đầu lặp tự động (nghe → đọc theo → chấm điểm).";
+        return attempts === 0
+          ? "Nhấn ▶ để bắt đầu: tự động phát → bật mic → chấm → lặp."
+          : "Sẵn sàng cho lần thử tiếp theo. Nhấn ▶.";
     }
   })();
-  return <div className="ll-shadow-player-loopstatus">{text}</div>;
+  return (
+    <div className={`ll-shadow-player-loopstatus ${mode === "recording" ? "is-recording" : ""}`}>
+      {text}
+    </div>
+  );
 }
 
 function scoreClass(n: number): string {
