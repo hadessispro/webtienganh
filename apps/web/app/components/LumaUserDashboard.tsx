@@ -2220,16 +2220,17 @@ export function LumaUserDashboard() {
       <main className="ll-main">
         {activeView === "today" ? (
           <div className="ll-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">User · 12/05/2026</div>
-                <h1>Hôm nay, <span className="ll-accent">nhẹ nhàng</span> thôi</h1>
-              </div>
-              <div className="ll-topbar-actions">
-                <button className="ll-btn ghost" onClick={() => setActiveView("shadowing")} type="button">Shadowing</button>
-                <button className="ll-btn primary" onClick={() => setActiveView("lesson")} type="button">Vào bài học</button>
-              </div>
-            </header>
+            <PageTopbar
+              eyebrow="User · 12/05/2026"
+              title="Hôm nay, "
+              titleAccent="nhẹ nhàng thôi"
+              actions={
+                <>
+                  <button className="ll-btn ghost" onClick={() => setActiveView("shadowing")} type="button">Shadowing</button>
+                  <button className="ll-btn primary" onClick={() => setActiveView("lesson")} type="button">Vào bài học</button>
+                </>
+              }
+            />
 
             <div className="ll-card-grid ll-grid-hero">
               <div className="ll-stack">
@@ -2322,12 +2323,11 @@ export function LumaUserDashboard() {
 
         {activeView === "lesson" ? (
           <div className="ll-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Học tập · Bài học theo lộ trình</div>
-                <h1>Bài học của <span className="ll-accent">bạn</span></h1>
-              </div>
-            </header>
+            <PageTopbar
+              eyebrow="HỌC TẬP · BÀI HỌC THEO LỘ TRÌNH"
+              title="Bài học của "
+              titleAccent="bạn"
+            />
             <LessonsViewV2 />
           </div>
         ) : null}
@@ -2345,31 +2345,29 @@ export function LumaUserDashboard() {
 
         {activeView === "practice" ? (
           <div className="ll-page ll-practice-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Đề luyện · Tự sinh từ lộ trình của bạn</div>
-                <h1>Luyện <span className="ll-accent">phản xạ</span></h1>
-              </div>
-            </header>
+            <PageTopbar
+              eyebrow="ĐỀ LUYỆN · TỰ SINH TỪ LỘ TRÌNH CỦA BẠN"
+              title="Luyện "
+              titleAccent="phản xạ"
+            />
             <PracticeViewV2 />
           </div>
         ) : null}
 
         {activeView === "flashcards" ? (
           <div className={flashcardSession && !flashcardSession.completed ? "ll-page ll-flashcard-page study-mode" : "ll-page ll-flashcard-page"}>
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Flashcard riêng tư · FSRS-lite · {flashcardStats.due} thẻ đến hạn</div>
-                <h1>Học <span className="ll-accent">ghi nhớ</span></h1>
-              </div>
-              <div className="ll-topbar-actions">
-                {flashcardSession && !flashcardSession.completed ? (
+            <PageTopbar
+              eyebrow={`FLASHCARD RIÊNG TƯ · FSRS-LITE · ${flashcardStats.due} THẺ ĐẾN HẠN`}
+              title="Học "
+              titleAccent="ghi nhớ"
+              actions={
+                flashcardSession && !flashcardSession.completed ? (
                   <button className="ll-btn ghost" onClick={stopFlashcardSession} type="button">Thoát phiên</button>
                 ) : (
                   <button className="ll-btn primary" onClick={startFlashcardSession} type="button">Bắt đầu học</button>
-                )}
-              </div>
-            </header>
+                )
+              }
+            />
 
             {flashcardSession && !flashcardSession.completed && selectedFlashcard ? (
               <div className="ll-flashcard-session-grid">
@@ -2650,6 +2648,11 @@ export function LumaUserDashboard() {
 
         {activeView === "shadowing" ? (
           <div className="ll-page">
+            <PageTopbar
+              eyebrow="LUYỆN PHÁT ÂM · SHADOWING"
+              title="Nghe và "
+              titleAccent="nhại theo giọng người bản xứ"
+            />
             <ShadowingView />
           </div>
         ) : null}
@@ -2667,24 +2670,25 @@ export function LumaUserDashboard() {
 
         {activeView === "schedule" ? (
           <div className="ll-page ll-schedule-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Lịch học · {formatMonthLabel(visibleScheduleMonth)}</div>
-                <h1>Nhịp học của <span className="ll-accent">bạn</span></h1>
-              </div>
-              <div className="ll-topbar-actions">
-                <div className="ll-realtime-pill">
-                  <LineIcon name="schedule" />
-                  <span>{formatClock(currentTime)}</span>
-                </div>
-                <label className="ll-time-setter">
-                  <span>Giờ học</span>
-                  <input aria-label="Giờ học mặc định" onChange={(event) => updateDailyStudyTime(event.target.value)} type="time" value={dailyTime} />
-                </label>
-                <button className="ll-btn ghost" onClick={requestScheduleReminderPermission} type="button">Bật nhắc lịch</button>
-                <button className="ll-btn primary" onClick={addScheduleEvent} type="button">+ Thêm lịch</button>
-              </div>
-            </header>
+            <PageTopbar
+              eyebrow={`LỊCH HỌC · ${formatMonthLabel(visibleScheduleMonth).toUpperCase()}`}
+              title="Nhịp học của "
+              titleAccent="bạn"
+              actions={
+                <>
+                  <div className="ll-realtime-pill">
+                    <LineIcon name="schedule" />
+                    <span>{formatClock(currentTime)}</span>
+                  </div>
+                  <label className="ll-time-setter">
+                    <span>Giờ học</span>
+                    <input aria-label="Giờ học mặc định" onChange={(event) => updateDailyStudyTime(event.target.value)} type="time" value={dailyTime} />
+                  </label>
+                  <button className="ll-btn ghost" onClick={requestScheduleReminderPermission} type="button">Bật nhắc lịch</button>
+                  <button className="ll-btn primary" onClick={addScheduleEvent} type="button">+ Thêm lịch</button>
+                </>
+              }
+            />
             {activeScheduleReminder ? (
               <section className="ll-schedule-reminder ll-glass">
                 <div>
@@ -2888,12 +2892,11 @@ export function LumaUserDashboard() {
 
         {activeView === "profile" ? (
           <div className="ll-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Hồ sơ học tập</div>
-                <h1>Tài khoản và <span className="ll-accent">avatar</span></h1>
-              </div>
-            </header>
+            <PageTopbar
+              eyebrow="HỒ SƠ HỌC TẬP"
+              title="Tài khoản và "
+              titleAccent="avatar"
+            />
             <section className="ll-profile-workbench ll-glass">
               <div className="ll-avatar-column">
                 <div className={`ll-profile-avatar large ${avatarClass}`} data-mode={profile.avatarMode}>

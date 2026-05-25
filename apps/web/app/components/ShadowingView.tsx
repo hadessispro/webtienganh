@@ -294,33 +294,37 @@ export function ShadowingView() {
 
   return (
     <div className="ll-shadowing-v2">
-      {/* ── Zone 1 — Hero with profile context ───────────────────── */}
-      <motion.header
-        className="ll-shadow-hero"
-        initial={{ y: 14, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        <span className="ll-shadow-eyebrow">Luyện phát âm · Shadowing</span>
-        <h2 className="ll-shadow-title">
-          Nghe và <span className="ll-accent">nhại theo</span> giọng người bản xứ
-        </h2>
-        {profile ? (
-          <p className="ll-shadow-sub">
-            Lộ trình của bạn: <strong>{describeGoalVi(profile.primaryGoal)}</strong>{" "}
-            · trình độ <strong>{profile.cefr}</strong>. Chủ đề bên dưới được
-            chọn riêng cho bạn.
-          </p>
-        ) : (
-          <p className="ll-shadow-sub">
+      {/* Profile context strip (replaces the duplicate hero — main
+          title now comes from PageTopbar in LumaUserDashboard) */}
+      {profile ? (
+        <motion.div
+          className="ll-shadow-context"
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <span>
+            Lộ trình của bạn:{" "}
+            <strong>{describeGoalVi(profile.primaryGoal)}</strong> · trình độ{" "}
+            <strong>{profile.cefr}</strong>. Chủ đề bên dưới được chọn riêng cho
+            bạn.
+          </span>
+        </motion.div>
+      ) : (
+        <motion.div
+          className="ll-shadow-context"
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+        >
+          <span>
             Để có chủ đề phù hợp hơn, hãy{" "}
-            <a href="/placement" className="ll-shadow-link">
+            <a href="/placement" className="ll-accent" style={{ fontWeight: 700 }}>
               làm bài kiểm tra xếp lớp
             </a>{" "}
             trước.
-          </p>
-        )}
-      </motion.header>
+          </span>
+        </motion.div>
+      )}
 
       {/* ── Zone 2 — Search box ───────────────────────────────────── */}
       <section className="ll-shadow-search">

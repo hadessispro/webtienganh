@@ -16070,3 +16070,18 @@ body { overflow-x: hidden; }
 }
 .ll-paths-explainer-icon { font-size: 1.2rem; flex-shrink: 0; }
 .ll-paths-explainer strong { color: var(--ink); }
+
+/* Profile context strip for Shadowing (replaces previous inline hero) */
+.ll-shadow-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: rgba(91, 174, 111, 0.08);
+  border: 1px solid rgba(91, 174, 111, 0.18);
+  border-radius: 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.ll-shadow-context strong { color: var(--ink); font-weight: 700; }
