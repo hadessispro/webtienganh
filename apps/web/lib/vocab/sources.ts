@@ -20,12 +20,15 @@ export async function lookupFreeDictionary(word: string): Promise<VocabResult | 
     
     const entry = data[0];
     
-    // Find first audio
+    // Find first audio and phonetic
     let audioUrl = "";
+    let phoneticText = entry.phonetic || "";
     for (const phon of entry.phonetics || []) {
-      if (phon.audio) {
+      if (phon.audio && !audioUrl) {
         audioUrl = phon.audio;
-        break;
+      }
+      if (phon.text && !phoneticText) {
+        phoneticText = phon.text;
       }
     }
     
@@ -44,7 +47,7 @@ export async function lookupFreeDictionary(word: string): Promise<VocabResult | 
     
     return {
       word: entry.word,
-      phonetic: entry.phonetic,
+      phonetic: phoneticText,
       audio: audioUrl,
       definitions
     };
