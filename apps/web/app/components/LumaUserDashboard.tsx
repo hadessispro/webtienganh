@@ -25,9 +25,11 @@ import {
 } from "../lib/product-data";
 import { CoursePathGrid } from "./CoursePathGrid";
 import { CoursesViewV2 } from "./CoursesViewV2";
+import { LearningPathsView } from "./LearningPathsView";
 import { LessonsViewV2 } from "./LessonsViewV2";
 import { PracticeViewV2 } from "./PracticeViewV2";
 import { ExamHubV2 } from "./ExamHubV2";
+import { PageTopbar } from "./PageTopbar";
 import dynamic from "next/dynamic";
 
 const ExamRoom = dynamic(() => import("./ExamRoom").then(mod => mod.ExamRoom), { ssr: false });
@@ -2332,13 +2334,12 @@ export function LumaUserDashboard() {
 
         {activeView === "courses" ? (
           <div className="ll-page">
-            <header className="ll-topbar ll-glass">
-              <div>
-                <div className="ll-label">Khóa học · Lộ trình cá nhân hóa</div>
-                <h1>Hành trình của <span className="ll-accent">bạn</span></h1>
-              </div>
-            </header>
-            <CoursesViewV2 />
+            <PageTopbar
+              eyebrow="KHÓA HỌC · LỘ TRÌNH CÁ NHÂN HÓA"
+              title="Hành trình của "
+              titleAccent="bạn"
+            />
+            <LearningPathsView />
           </div>
         ) : null}
 
@@ -2655,6 +2656,11 @@ export function LumaUserDashboard() {
 
         {activeView === "exams" ? (
           <div className="ll-page">
+            <PageTopbar
+              eyebrow="KHO ĐỀ THI · IELTS · TOEIC · VSTEP"
+              title="Thư viện "
+              titleAccent="đề thi"
+            />
             <ExamHubV2 profile={profile} onStartExam={setActiveExamId} />
           </div>
         ) : null}

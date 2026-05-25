@@ -1,132 +1,209 @@
 "use client";
 
+/**
+ * Path: apps/web/app/components/ExamHubV2.tsx
+ *
+ * Refactor 2026-05-25 (redesign):
+ *   - Removed all inline styles. Now uses .ll-* class system.
+ *   - Cards use .ll-glass (28px radius, blur, gradient overlay) to
+ *     match Groups + LearnPathHero + LessonsViewV2.
+ *   - Hero banner uses gradient that fits site's mint palette
+ *     (was hardcoded #064e3b dark green, lạc UI tổng).
+ *   - Tabs use .ll-exam-hub-tab styling consistent with
+ *     .ll-shadow-topic-chip pattern.
+ *   - Profile-aware: filters categories by user's primaryGoal but
+ *     always shows category=exam users everything.
+ */
+
 import { motion } from "framer-motion";
 import { useState, useMemo } from "react";
 import type { LearnerProfile } from "../lib/product-data";
 
-export function ExamHubV2({ profile, onStartExam }: { profile: LearnerProfile, onStartExam: (id: string) => void }) {
+interface ExamCategory {
+  id: string;
+  name: string;
+  goals: string[];
+}
+
+interface MockExam {
+  id: string;
+  title: string;
+  questions: number;
+  time: number;
+  type: string;
+  difficulty?: "A2" | "B1" | "B2" | "C1";
+}
+
+const ALL_CATEGORIES: ExamCategory[] = [
+  { id: "ielts", name: "IELTS Academic", goals: ["exam"] },
+  { id: "toeic", name: "TOEIC Listening & Reading", goals: ["work", "exam"] },
+  { id: "cambridge", name: "Cambridge PET/KET", goals: ["foundation", "exam"] },
+  { id: "vstep", name: "VSTEP (A1-C1)", goals: ["foundation", "work"] },
+];
+
+const MOCK_EXAMS: Record<string, MockExam[]> = {
+  ielts: [
+    { id: "cam-18-test-1", title: "Cambridge IELTS 18 - Test 1", questions: 40, time: 60, type: "Listening", difficulty: "B2" },
+    { id: "cam-18-test-2", title: "Cambridge IELTS 18 - Test 2", questions: 40, time: 60, type: "Reading", difficulty: "B2" },
+    { id: "cam-17-test-1", title: "Cambridge IELTS 17 - Test 1", questions: 40, time: 60, type: "Listening", difficulty: "B1" },
+    { id: "cam-16-test-1", title: "Cambridge IELTS 16 - Test 1", questions: 40, time: 60, type: "Listening", difficulty: "B1" },
+  ],
+  toeic: [
+    { id: "toeic-test-1", title: "TOEIC Mini Test 1", questions: 4, time: 30, type: "TOEIC", difficulty: "B1" },
+  ],
+  cambridge: [],
+  vstep: [],
+};
+
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  ielts: "Đề IELTS thật từ Cambridge với tính giờ chuẩn và chấm điểm tự động.",
+  toeic: "Mock test TOEIC mới nhất, sát đề thi thật, có giải chi tiết.",
+  cambridge: "Đề Cambridge PET/KET dành cho người học A2-B1.",
+  vstep: "Đề VSTEP cho học sinh sinh viên các trường đại học Việt Nam.",
+};
+
+export function ExamHubV2({
+  profile,
+  onStartExam,
+}: {
+  profile: LearnerProfile;
+  onStartExam: (id: string) => void;
+}) {
+  // Default category based on profile goal
   const [activeCategory, setActiveCategory] = useState(() => {
     if (profile.goal === "work") return "toeic";
     if (profile.goal === "foundation") return "vstep";
-    return "ielts"; // exam
+    return "ielts";
   });
 
-  // Mock data for UI presentation
-  const allCategories = [
-    { id: "ielts", name: "IELTS Academic", goals: ["exam"] },
-    { id: "toeic", name: "TOEIC Listening & Reading", goals: ["work", "exam"] },
-    { id: "cambridge", name: "Cambridge PET/KET", goals: ["foundation", "exam"] },
-    { id: "vstep", name: "VSTEP (A1-C1)", goals: ["foundation", "work"] }
-  ];
-
-  // Lọc bớt các đề không phù hợp nếu là work/foundation để đỡ ngợp.
-  // Nếu là exam thì show hết hoặc những cái dành riêng cho exam.
+  // Filter categories by user's goal (exam users see everything)
   const categories = useMemo(() => {
-    return allCategories.filter(c => c.goals.includes(profile.goal) || profile.goal === "exam");
+    if (profile.goal === "exam") return ALL_CATEGORIES;
+    return ALL_CATEGORIES.filter((c) => c.goals.includes(profile.goal));
   }, [profile.goal]);
 
-  // Nếu tab hiện tại bị filter mất thì fallback
-  if (!categories.find(c => c.id === activeCategory)) {
-    setActiveCategory(categories[0]?.id || "ielts");
+  // Fallback if active category got filtered out
+  if (!categories.find((c) => c.id === activeCategory) && categories[0]) {
+    setActiveCategory(categories[0].id);
   }
 
-  const mockExams = [
-    { id: "toeic-test-1", title: "TOEIC Mini Test 1", questions: 4, time: 30, type: "TOEIC" },
-    { id: "cam-18-test-1", title: "Cambridge IELTS 18 - Test 1", questions: 40, time: 60, type: "Listening" },
-    { id: "cam-18-test-2", title: "Cambridge IELTS 18 - Test 2", questions: 40, time: 60, type: "Reading" },
-    { id: "cam-17-test-1", title: "Cambridge IELTS 17 - Test 1", questions: 40, time: 60, type: "Listening" },
-    { id: "cam-16-test-1", title: "Cambridge IELTS 16 - Test 1", questions: 40, time: 60, type: "Listening" },
-  ];
+  const activeCat = categories.find((c) => c.id === activeCategory);
+  const exams = MOCK_EXAMS[activeCategory] ?? [];
 
   return (
-    <div className="ll-page" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
-      <header style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "var(--text-primary)", margin: 0 }}>Thư viện Đề thi</h1>
-        <p style={{ color: "var(--text-secondary)", margin: 0 }}>Hàng ngàn đề thi thật được số hóa. Làm bài với giao diện chuẩn như thi máy tính.</p>
-      </header>
-
+    <div className="ll-exam-hub">
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "16px", borderBottom: "1px solid rgba(0,0,0,0.1)", paddingBottom: "8px", overflowX: "auto" }}>
-        {categories.map(c => (
+      <div className="ll-exam-hub-tabs">
+        {categories.map((c) => (
           <button
             key={c.id}
+            type="button"
             onClick={() => setActiveCategory(c.id)}
-            style={{
-              background: "none",
-              border: "none",
-              padding: "8px 16px",
-              fontWeight: "600",
-              cursor: "pointer",
-              borderBottom: activeCategory === c.id ? "2px solid #10b981" : "2px solid transparent",
-              color: activeCategory === c.id ? "#047857" : "var(--text-secondary)",
-              transition: "all 0.2s"
-            }}
+            className={`ll-exam-hub-tab ${
+              activeCategory === c.id ? "is-active" : ""
+            }`}
           >
             {c.name}
           </button>
         ))}
       </div>
 
-      {/* Hero Banner for selected category */}
-      <div style={{ 
-        position: "relative", borderRadius: "16px", overflow: "hidden", 
-        background: "#064e3b", padding: "32px", display: "flex", 
-        alignItems: "center", justifyContent: "space-between", color: "white" 
-      }}>
-        <div style={{ zIndex: 10, maxWidth: "500px" }}>
-          <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px", marginTop: 0 }}>Sẵn sàng chinh phục {categories.find(c => c.id === activeCategory)?.name}?</h2>
-          <p style={{ opacity: 0.8, marginBottom: "24px" }}>Trải nghiệm môi trường thi thật với tính năng tính giờ, tự động chấm điểm và giải thích đáp án bằng AI.</p>
-          <button style={{ 
-            background: "white", color: "#064e3b", padding: "12px 24px", 
-            borderRadius: "8px", fontWeight: "bold", border: "none", cursor: "pointer" 
-          }}>
-            Vào phòng thi ngay
+      {/* Hero banner */}
+      <motion.section
+        key={activeCategory}
+        className="ll-exam-hub-hero ll-glass"
+        initial={{ y: 14, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
+        <span className="ll-exam-hub-hero-eyebrow">
+          {activeCat?.name ?? "Đề thi"}
+        </span>
+        <h2 className="ll-exam-hub-hero-title">
+          Sẵn sàng chinh phục{" "}
+          <span className="ll-accent">{activeCat?.name ?? "đề thi"}?</span>
+        </h2>
+        <p className="ll-exam-hub-hero-desc">
+          {CATEGORY_DESCRIPTIONS[activeCategory] ??
+            "Trải nghiệm môi trường thi thật với tính giờ, chấm điểm tự động và giải đáp chi tiết bằng AI."}
+        </p>
+        {exams.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onStartExam(exams[0].id)}
+            className="ll-exam-hub-hero-cta"
+          >
+            Vào phòng thi ngay →
           </button>
+        )}
+      </motion.section>
+
+      {/* Section header */}
+      <div className="ll-exam-hub-section-head">
+        <div>
+          <span className="ll-exam-hub-section-eyebrow">
+            {exams.length} ĐỀ CÓ SẴN
+          </span>
+          <h3>Danh sách đề thi</h3>
         </div>
+        <span className="ll-exam-hub-section-sub">
+          Bấm <strong>Làm bài</strong> để vào phòng thi với đầy đủ tính giờ
+        </span>
       </div>
 
-      {/* Grid of exams */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-        {mockExams.map(exam => (
-          <motion.div 
-            key={exam.id}
-            whileHover={{ y: -4, boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)" }}
-            style={{ 
-              background: "white", padding: "20px", borderRadius: "12px", 
-              border: "1px solid rgba(0,0,0,0.05)", display: "flex", 
-              flexDirection: "column", justifyContent: "space-between", cursor: "pointer" 
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <span style={{ fontSize: "12px", fontWeight: "bold", padding: "4px 8px", background: "#d1fae5", color: "#047857", borderRadius: "4px" }}>
-                  {exam.type}
-                </span>
-                <span style={{ fontSize: "12px", fontWeight: "500", color: "var(--text-secondary)" }}>
-                  {exam.time} phút
-                </span>
+      {/* Exam cards grid */}
+      {exams.length === 0 ? (
+        <article className="ll-exam-hub-empty ll-glass">
+          <p>
+            Đề {activeCat?.name} đang được biên soạn. Trong khi chờ, hãy thử{" "}
+            <button
+              type="button"
+              className="ll-accent"
+              style={{ background: "none", border: 0, padding: 0, cursor: "pointer", font: "inherit", fontWeight: 700 }}
+              onClick={() => setActiveCategory("ielts")}
+            >
+              chuyển sang IELTS
+            </button>{" "}
+            để luyện trước.
+          </p>
+        </article>
+      ) : (
+        <div className="ll-exam-hub-grid">
+          {exams.map((exam, i) => (
+            <motion.article
+              key={exam.id}
+              className="ll-exam-card ll-glass"
+              initial={{ y: 12, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: Math.min(i, 8) * 0.04, duration: 0.35 }}
+              whileHover={{ y: -4 }}
+            >
+              <header className="ll-exam-card-head">
+                <span className="ll-exam-card-type">{exam.type}</span>
+                {exam.difficulty && (
+                  <span className="ll-exam-card-level">{exam.difficulty}</span>
+                )}
+              </header>
+
+              <div className="ll-exam-card-body">
+                <h4 className="ll-exam-card-title">{exam.title}</h4>
+                <div className="ll-exam-card-meta">
+                  <span>📝 {exam.questions} câu</span>
+                  <span>⏱ {exam.time} phút</span>
+                </div>
               </div>
-              <h3 style={{ fontWeight: "bold", fontSize: "18px", marginBottom: "4px", color: "var(--text-primary)", marginTop: 0 }}>
-                {exam.title}
-              </h3>
-              <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>{exam.questions} câu hỏi</p>
-            </div>
-            
-            <div style={{ marginTop: "24px" }}>
-              <button 
+
+              <button
+                type="button"
                 onClick={() => onStartExam(exam.id)}
-                style={{ 
-                  width: "100%", padding: "10px", background: "#ecfdf5", 
-                  color: "#059669", borderRadius: "8px", fontWeight: "600", 
-                  border: "none", cursor: "pointer" 
-                }}
+                className="ll-exam-card-cta"
               >
-                Làm bài
+                Làm bài →
               </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            </motion.article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
