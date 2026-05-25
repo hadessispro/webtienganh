@@ -22,12 +22,12 @@ export async function POST(req: Request) {
   const profile = await prisma.placementProfile.upsert({
     where: { userId: session.user.id },
     update: {
-      data: data,
-      lastUpdated: new Date()
+      ...data,
+      updatedAt: new Date()
     },
     create: {
       userId: session.user.id,
-      data: data,
+      ...data,
     }
   })
 

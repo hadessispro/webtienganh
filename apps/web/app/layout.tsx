@@ -3,6 +3,7 @@ import { CursorEffect } from "./components/CursorEffect";
 import "./styles/fonts.css";
 import "./styles/theme.css";
 import "./globals.css";
+import { SessionProvider } from "./components/SessionProvider";
 
 export const metadata: Metadata = {
   title: "LumaLang - AI language learning sanctuary",
@@ -28,8 +29,10 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <CursorEffect />
-        {children}
+        <SessionProvider>
+          <CursorEffect />
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );
