@@ -365,6 +365,17 @@ export function ShadowingView() {
                 clip={clip}
                 userCefr={profile?.cefr}
                 onPick={() => setActiveClip(clip)}
+                onDelete={async () => {
+                  if (!confirm("Bạn có chắc chắn muốn xóa video này khỏi lịch sử luyện tập không?")) return;
+                  try {
+                    const res = await fetch(`/api/shadowing/clips?id=${clip.id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                      setClips(prev => prev.filter(c => c.id !== clip.id));
+                    }
+                  } catch (e) {
+                    console.error("Failed to delete clip", e);
+                  }
+                }}
               />
             ))}
           </div>
@@ -382,10 +393,12 @@ function ClipCard({
   clip,
   userCefr,
   onPick,
+  onDelete,
 }: {
   clip: SavedClip;
   userCefr?: CEFRLevel;
   onPick: () => void;
+  onDelete: () => void;
 }) {
   const tooHard = useMemo(() => {
     if (!userCefr) return false;
@@ -399,43 +412,80 @@ function ClipCard({
   const ss = String(clip.durationSec % 60).padStart(2, "0");
 
   return (
-    <motion.button
-      type="button"
-      onClick={onPick}
-      className="ll-shadow-clip"
-      whileHover={{ y: -3 }}
-      whileTap={{ scale: 0.99 }}
-    >
-      <div className="ll-shadow-clip-thumb">
-        <img
-          src={`https://i.ytimg.com/vi/${clip.youtubeId}/mqdefault.jpg`}
-          alt={clip.title}
-          loading="lazy"
-        />
-        <span className="ll-shadow-clip-duration">
-          {mm}:{ss}
-        </span>
-      </div>
-      <div className="ll-shadow-clip-body">
-        <h4
-          className="ll-shadow-clip-title"
-          dangerouslySetInnerHTML={{ __html: clip.title }}
-        />
-        <div className="ll-shadow-clip-meta">
-          <span
-            className={`ll-shadow-clip-cefr ${
-              tooHard ? "ll-shadow-clip-cefr--warn" : ""
-            }`}
-          >
-            {clip.cefrEstimate}
-            {tooHard && " (khó)"}
-          </span>
-          <span className="ll-shadow-clip-segs">
-            {clip.segments.length} đoạn
+    <div className="ll-shadow-clip-wrapper" style={{ position: 'relative' }}>
+      <motion.button
+        type="button"
+        onClick={onPick}
+        className="ll-shadow-clip"
+        whileHover={{ y: -3 }}
+        whileTap={{ scale: 0.99 }}
+        style={{ width: '100%', textAlign: 'left' }}
+      >
+        <div className="ll-shadow-clip-thumb">
+          <img
+            src={`https://i.ytimg.com/vi/${clip.youtubeId}/mqdefault.jpg`}
+            alt={clip.title}
+            loading="lazy"
+          />
+          <span className="ll-shadow-clip-duration">
+            {mm}:{ss}
           </span>
         </div>
-      </div>
-    </motion.button>
+        <div className="ll-shadow-clip-body">
+          <h4
+            className="ll-shadow-clip-title"
+            dangerouslySetInnerHTML={{ __html: clip.title }}
+          />
+          <div className="ll-shadow-clip-meta">
+            <span
+              className={`ll-shadow-clip-cefr ${
+                tooHard ? "ll-shadow-clip-cefr--warn" : ""
+              }`}
+            >
+              {clip.cefrEstimate}
+              {tooHard && " (khó)"}
+            </span>
+            <span className="ll-shadow-clip-segs">
+              {clip.segments.length} đoạn
+            </span>
+          </div>
+        </div>
+      </motion.button>
+      
+      {/* Delete button positioned absolute */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="ll-shadow-clip-delete"
+        title="Xóa khỏi lịch sử"
+        style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          background: 'rgba(0, 0, 0, 0.6)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          width: '28px',
+          height: '28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 10,
+          opacity: 0.8,
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+        onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+        onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        ✕
+      </button>
+    </div>
   );
 }
 
