@@ -11,9 +11,9 @@ const QUOTES = [
 ];
 
 const PRESET_YOUTUBE_IDS = [
-  { id: "jfKfPfyJRdk", name: "Lofi Girl (Hip Hop)" },
-  { id: "4xDzrJKXOOY", name: "Synthwave Radio" },
-  { id: "7NOSDKb0HlU", name: "Chillhop Music" }
+  { id: "jfKfPfyJRdk", name: "Lofi Girl", author: "Hip Hop Radio" },
+  { id: "4xDzrJKXOOY", name: "Synthwave", author: "Lofi Boy" },
+  { id: "7NOSDKb0HlU", name: "Chillhop", author: "Raccoon Radio" }
 ];
 
 function extractYoutubeId(input: string) {
@@ -203,91 +203,126 @@ export function ExamRoom({ examId, onExit }: { examId: string, onExit: () => voi
         )}
       </AnimatePresence>
 
-      {/* YouTube Iframe Audio Player Widget */}
+      {/* YouTube Iframe Audio Player Widget (Vinyl Design) */}
       {showMusic && (
         <motion.div 
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          style={{ position: "absolute", bottom: "32px", right: "32px", zIndex: 20, background: "rgba(17, 24, 39, 0.85)", backdropFilter: "blur(20px)", padding: "24px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.1)", width: "360px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}
+          style={{ 
+            position: "absolute", bottom: "32px", right: "32px", zIndex: 20, 
+            background: "rgba(17, 24, 39, 0.7)", backdropFilter: "blur(24px)", 
+            padding: "24px", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.1)", 
+            width: "420px", display: "flex", gap: "24px", boxShadow: "0 30px 60px -12px rgba(0,0,0,0.5)"
+          }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #10b981, #059669)", display: "flex", justifyContent: "center", alignItems: "center", color: "white", fontSize: "16px", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.4)" }}>
-                🎵
+          {/* Vinyl Record */}
+          <div style={{ position: "relative", width: "120px", height: "120px", flexShrink: 0 }}>
+            {/* Playhead Arm (Decorative) */}
+            <div style={{ position: "absolute", top: "-10px", right: "-10px", width: "40px", height: "80px", borderRight: "4px solid #9ca3af", borderTop: "4px solid #9ca3af", borderRadius: "0 16px 0 0", transformOrigin: "top right", transform: isYtPlaying ? "rotate(15deg)" : "rotate(-10deg)", transition: "transform 0.5s ease-in-out", zIndex: 10 }} />
+            
+            <motion.div
+              animate={{ rotate: isYtPlaying ? 360 : 0 }}
+              transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+              style={{
+                width: "100%", height: "100%", borderRadius: "50%",
+                background: "repeating-radial-gradient(circle at center, #111 0, #111 4px, #222 5px, #222 6px)",
+                boxShadow: "0 8px 16px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.8)",
+                display: "flex", justifyContent: "center", alignItems: "center", position: "relative", zIndex: 5
+              }}
+            >
+              {/* Glossy reflection on vinyl */}
+              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.1) 100%)", pointerEvents: "none" }} />
+              
+              {/* Label / Thumbnail in center */}
+              <div style={{
+                width: "44px", height: "44px", borderRadius: "50%",
+                backgroundImage: `url(https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg)`,
+                backgroundSize: "cover", backgroundPosition: "center",
+                border: "2px solid #10b981", position: "relative", zIndex: 6
+              }}>
+                {/* Spindle hole */}
+                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "8px", height: "8px", background: "#111", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)" }} />
               </div>
-              <div>
-                <span style={{ fontWeight: "bold", fontSize: "15px", color: "white", display: "block", letterSpacing: "0.5px" }}>YouTube Lofi Player</span>
-                <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginTop: "2px", display: "block" }}>{isYtPlaying ? "Đang phát nhạc..." : "Đã tạm dừng"}</span>
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <MusicWave isPlaying={isYtPlaying} />
-              <button onClick={() => setShowMusic(false)} style={{ background: "rgba(255,255,255,0.1)", width: "28px", height: "28px", borderRadius: "50%", border: "none", color: "white", fontSize: "16px", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", transition: "all 0.2s" }} className="exam-option-hover">×</button>
-            </div>
+            </motion.div>
           </div>
-          
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", paddingBottom: "4px" }}>
-              {PRESET_YOUTUBE_IDS.map(preset => (
-                <button
-                  key={preset.id}
-                  onClick={() => { setYtVideoId(preset.id); setIsYtPlaying(true); }}
-                  style={{
-                    padding: "8px 14px", borderRadius: "12px", border: "1px solid", cursor: "pointer", whiteSpace: "nowrap",
-                    background: ytVideoId === preset.id ? "rgba(16, 185, 129, 0.2)" : "rgba(255,255,255,0.05)",
-                    borderColor: ytVideoId === preset.id ? "#10b981" : "transparent",
-                    color: ytVideoId === preset.id ? "#10b981" : "rgba(255,255,255,0.7)", 
-                    fontSize: "13px", fontWeight: "600", transition: "all 0.2s"
-                  }}
-                  className="exam-option-hover"
-                >
-                  {preset.name}
-                </button>
-              ))}
+
+          {/* Info & Controls */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+              <div style={{ overflow: "hidden", flex: 1, position: "relative", height: "45px" }}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={ytVideoId}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ position: "absolute", inset: 0 }}
+                  >
+                    <div style={{ fontWeight: "900", fontSize: "20px", color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "1px", textTransform: "uppercase" }}>
+                      {PRESET_YOUTUBE_IDS.find(p => p.id === ytVideoId)?.name || "Custom Track"}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#10b981", fontWeight: "600", letterSpacing: "2px", textTransform: "uppercase" }}>
+                      {PRESET_YOUTUBE_IDS.find(p => p.id === ytVideoId)?.author || "YouTube Audio"}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              <button onClick={() => setShowMusic(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: "24px", lineHeight: 0.8, marginLeft: "8px" }} className="exam-option-hover">×</button>
             </div>
 
-            <div style={{ display: "flex", gap: "8px" }}>
-              <input 
-                type="text" 
-                placeholder="Dán Link hoặc ID YouTube..." 
-                value={ytCustomId}
-                onChange={e => setYtCustomId(e.target.value)}
-                style={{ flex: 1, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", padding: "10px 14px", color: "white", fontSize: "13px", outline: "none", transition: "all 0.2s" }}
-              />
-              <button 
-                onClick={() => { 
-                  if(ytCustomId) { 
-                    setYtVideoId(extractYoutubeId(ytCustomId)); 
-                    setIsYtPlaying(true); 
-                  } 
-                }}
-                style={{ background: "#10b981", color: "white", border: "none", padding: "0 18px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)" }}
-                className="exam-submit-btn"
-              >
-                Phát
-              </button>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px", background: "rgba(0,0,0,0.2)", padding: "12px 16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
+            {/* Controls */}
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
               <button 
                 onClick={toggleYtPlay}
-                style={{ width: "44px", height: "44px", borderRadius: "50%", background: "white", color: "#111827", border: "none", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", boxShadow: "0 4px 12px rgba(255,255,255,0.2)", transition: "transform 0.1s" }}
-                onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"}
+                style={{ width: "36px", height: "36px", borderRadius: "50%", background: "white", color: "black", border: "none", display: "flex", justifyContent: "center", alignItems: "center", cursor: "pointer", fontSize: "14px", boxShadow: "0 4px 12px rgba(255,255,255,0.2)", transition: "transform 0.1s" }}
+                onMouseDown={e => e.currentTarget.style.transform = "scale(0.9)"}
                 onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
               >
                 {isYtPlaying ? "⏸" : "▶"}
               </button>
-              <input 
-                type="range" min="0" max="100" value={ytVolume} onChange={e => setYtVolume(Number(e.target.value))}
-                style={{ flex: 1, accentColor: "#10b981", height: "6px", borderRadius: "4px" }}
-              />
+              <MusicWave isPlaying={isYtPlaying} />
+              <input type="range" min="0" max="100" value={ytVolume} onChange={e => setYtVolume(Number(e.target.value))} style={{ flex: 1, accentColor: "#10b981", height: "4px", cursor: "pointer" }} />
+            </div>
+
+            {/* Playlist mini */}
+            <div style={{ display: "flex", gap: "12px" }}>
+              {PRESET_YOUTUBE_IDS.map((preset, idx) => (
+                <div
+                  key={preset.id}
+                  onClick={() => { setYtVideoId(preset.id); setIsYtPlaying(true); }}
+                  style={{
+                    width: "42px", height: "42px", borderRadius: "6px", cursor: "pointer",
+                    backgroundImage: `url(https://img.youtube.com/vi/${preset.id}/hqdefault.jpg)`,
+                    backgroundSize: "cover", backgroundPosition: "center",
+                    border: ytVideoId === preset.id ? "2px solid #10b981" : "2px solid transparent",
+                    opacity: ytVideoId === preset.id ? 1 : 0.4,
+                    transition: "all 0.2s",
+                    position: "relative"
+                  }}
+                  className="exam-option-hover"
+                >
+                  <div style={{ position: "absolute", bottom: "-6px", right: "-6px", background: "#111827", color: "white", fontSize: "10px", width: "16px", height: "16px", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: "bold" }}>
+                    {idx + 1}
+                  </div>
+                </div>
+              ))}
+              
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1 }}>
+                <input 
+                  type="text" 
+                  placeholder="Dán URL YouTube..." 
+                  value={ytCustomId}
+                  onChange={e => setYtCustomId(e.target.value)}
+                  onKeyDown={e => { if(e.key === "Enter" && ytCustomId) { setYtVideoId(extractYoutubeId(ytCustomId)); setIsYtPlaying(true); } }}
+                  style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid rgba(255,255,255,0.2)", padding: "4px 0", color: "white", fontSize: "11px", outline: "none", transition: "all 0.2s" }}
+                  onFocus={e => e.target.style.borderBottom = "1px solid #10b981"}
+                  onBlur={e => e.target.style.borderBottom = "1px solid rgba(255,255,255,0.2)"}
+                />
+              </div>
             </div>
           </div>
-          
-          <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "16px", textAlign: "center", marginBottom: 0 }}>
-            Sử dụng YouTube Iframe API. Video bị ẩn.
-          </p>
 
           {/* Hidden YouTube Player */}
           <div style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "10px", height: "10px", overflow: "hidden" }}>
