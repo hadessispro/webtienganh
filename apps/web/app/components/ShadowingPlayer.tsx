@@ -120,9 +120,15 @@ export function ShadowingPlayer({
     currentIdxRef.current = currentIdx;
   }, [currentIdx]);
 
+  const { currentTime, playerState } = useYouTubeTime(videoRef, true);
+
+  const safeSegments = segments || [];
+  const currentSegment = safeSegments[currentIdx] || { start: 0, end: 0, text_en: "" };
+
   // Fetch vocabulary present in the clip
   useEffect(() => {
-    const allText = segments.map((s) => s.text_en).join(" ");
+    if (safeSegments.length === 0) return;
+    const allText = safeSegments.map((s) => s.text_en).join(" ");
     
     // 1. Fetch Local Vocab
     fetch("/api/shadowing/extract-vocab", {
@@ -152,11 +158,6 @@ export function ShadowingPlayer({
       .catch((e) => console.error("AI error", e))
       .finally(() => setIsAiLoading(false));
   }, [segments, youtubeId]);
-
-  // Subscribe to YouTube currentTime for karaoke
-  const { currentTime, playerState } = useYouTubeTime(videoRef, true);
-
-  const currentSegment = segments[currentIdx];
 
   /* ── Detect mic permission on mount ────────────────────────── */
   useEffect(() => {
@@ -468,6 +469,17 @@ export function ShadowingPlayer({
 
   const usedAllAttempts =
     isAutoLoop && loopAttempts >= MAX_AUTOLOOP_ATTEMPTS;
+
+  // Early return if segments are missing
+  if (safeSegments.length === 0) {
+    return (
+      <div className="ll-shadow-workspace" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--page)", display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+        <h2 style={{ color: "var(--ink)", marginBottom: "16px" }}>Dữ liệu phụ đề bị lỗi</h2>
+        <p style={{ color: "var(--muted)", marginBottom: "24px" }}>Không thể tải đoạn hội thoại cho video này. Có thể video chưa có phụ đề.</p>
+        <button onClick={onClose} style={{ padding: "10px 20px", background: "var(--ink)", color: "white", borderRadius: "8px", border: "none", cursor: "pointer" }}>Quay lại</button>
+      </div>
+    );
+  }
 
   /* ── Render ────────────────────────────────────────────────── */
   return (
