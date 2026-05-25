@@ -89,6 +89,10 @@ export function ShadowingPlayer({
   const [vocabList, setVocabList] = useState<any[]>([]);
   const [selectedVocab, setSelectedVocab] = useState<any | null>(null);
 
+  // AI analysis state
+  const [aiData, setAiData] = useState<{ phrases: any[]; grammar: any[] } | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(true);
+
   // Auto-loop state
   const [isAutoLoop, setIsAutoLoop] = useState(true);
   const [loopAttempts, setLoopAttempts] = useState(0);
@@ -119,6 +123,8 @@ export function ShadowingPlayer({
   // Fetch vocabulary present in the clip
   useEffect(() => {
     const allText = segments.map((s) => s.text_en).join(" ");
+    
+    // 1. Fetch Local Vocab
     fetch("/api/shadowing/extract-vocab", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,7 +135,23 @@ export function ShadowingPlayer({
         if (data.matches) setVocabList(data.matches);
       })
       .catch(() => {});
-  }, [segments]);
+
+    // 2. Fetch AI Grammar & Phrases (DeepSeek)
+    setIsAiLoading(true);
+    fetch("/api/shadowing/ai-analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: allText, videoId: youtubeId }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.phrases || data.grammar) {
+          setAiData({ phrases: data.phrases || [], grammar: data.grammar || [] });
+        }
+      })
+      .catch((e) => console.error("AI error", e))
+      .finally(() => setIsAiLoading(false));
+  }, [segments, youtubeId]);
 
   // Subscribe to YouTube currentTime for karaoke
   const { currentTime, playerState } = useYouTubeTime(videoRef, true);
@@ -466,7 +488,7 @@ export function ShadowingPlayer({
         </div>
 
         <div style={{ padding: "24px", borderBottom: "1px solid var(--line)" }}>
-          <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700 }}>Từ vựng trong bài</h3>
+          <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700 }}>Từ vựng nổi bật</h3>
           {vocabList.length > 0 ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {vocabList.map(v => (
@@ -490,7 +512,51 @@ export function ShadowingPlayer({
               ))}
             </div>
           ) : (
-            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Đang phân tích từ vựng...</div>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Không tìm thấy từ vựng khó.</div>
+          )}
+        </div>
+
+        {/* Cụm từ & Ngữ pháp (AI) */}
+        <div style={{ padding: "24px", borderBottom: "1px solid var(--line)" }}>
+          <h3 style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "16px" }}>✨</span> Phân tích AI
+          </h3>
+          
+          {isAiLoading ? (
+            <div style={{ fontSize: "13px", color: "var(--muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div className="ll-shadow-spinner" style={{ width: "14px", height: "14px" }} /> DeepSeek đang phân tích...
+            </div>
+          ) : !aiData || (aiData.phrases.length === 0 && aiData.grammar.length === 0) ? (
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Bài hội thoại cơ bản.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {aiData.phrases.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink)", marginBottom: "8px", textTransform: "uppercase" }}>Cụm từ</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {aiData.phrases.map((p, idx) => (
+                      <div key={idx} style={{ background: "var(--glass)", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}>
+                        <div style={{ fontWeight: 700, fontSize: "13px", color: "#f59e0b" }}>{p.phrase}</div>
+                        <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>{p.definition_vi}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {aiData.grammar.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink)", marginBottom: "8px", textTransform: "uppercase" }}>Ngữ pháp</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {aiData.grammar.map((g, idx) => (
+                      <div key={idx} style={{ background: "var(--glass)", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}>
+                        <div style={{ fontWeight: 700, fontSize: "13px", color: "#3b82f6" }}>{g.structure}</div>
+                        <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>{g.explanation_vi}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
