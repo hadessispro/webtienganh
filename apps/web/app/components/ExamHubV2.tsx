@@ -22,23 +22,28 @@ export function ExamHubV2() {
   ];
 
   return (
-    <div className="ll-exams-v2 p-6 h-full flex flex-col gap-6" style={{ background: "var(--bg-secondary)", borderRadius: "1.5rem" }}>
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>Thư viện Đề thi</h1>
-        <p style={{ color: "var(--text-secondary)" }}>Hàng ngàn đề thi thật được số hóa. Làm bài với giao diện chuẩn như thi máy tính.</p>
+    <div className="ll-page" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+      <header style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "var(--text-primary)", margin: 0 }}>Thư viện Đề thi</h1>
+        <p style={{ color: "var(--text-secondary)", margin: 0 }}>Hàng ngàn đề thi thật được số hóa. Làm bài với giao diện chuẩn như thi máy tính.</p>
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-[rgba(0,0,0,0.05)] pb-2 overflow-x-auto no-scrollbar">
+      <div style={{ display: "flex", gap: "16px", borderBottom: "1px solid rgba(0,0,0,0.1)", paddingBottom: "8px", overflowX: "auto" }}>
         {categories.map(c => (
           <button
             key={c.id}
             onClick={() => setActiveCategory(c.id)}
-            className={`px-4 py-2 font-medium whitespace-nowrap transition-all ${
-              activeCategory === c.id 
-                ? "border-b-2 border-emerald-500 text-emerald-700" 
-                : "text-[rgba(0,0,0,0.5)] hover:text-emerald-600"
-            }`}
+            style={{
+              background: "none",
+              border: "none",
+              padding: "8px 16px",
+              fontWeight: "600",
+              cursor: "pointer",
+              borderBottom: activeCategory === c.id ? "2px solid #10b981" : "2px solid transparent",
+              color: activeCategory === c.id ? "#047857" : "var(--text-secondary)",
+              transition: "all 0.2s"
+            }}
           >
             {c.name}
           </button>
@@ -46,42 +51,56 @@ export function ExamHubV2() {
       </div>
 
       {/* Hero Banner for selected category */}
-      <div className="relative rounded-2xl overflow-hidden bg-emerald-900 p-8 flex items-center justify-between shadow-lg">
-        <div className="z-10 text-white max-w-lg">
-          <h2 className="text-2xl font-bold mb-2">Sẵn sàng chinh phục {categories.find(c => c.id === activeCategory)?.name}?</h2>
-          <p className="opacity-80 mb-6">Trải nghiệm môi trường thi thật với tính năng tính giờ, tự động chấm điểm và giải thích đáp án bằng AI.</p>
-          <button className="bg-white text-emerald-900 px-6 py-3 rounded-xl font-bold shadow-md hover:bg-emerald-50 transition-colors">
+      <div style={{ 
+        position: "relative", borderRadius: "16px", overflow: "hidden", 
+        background: "#064e3b", padding: "32px", display: "flex", 
+        alignItems: "center", justifyContent: "space-between", color: "white" 
+      }}>
+        <div style={{ zIndex: 10, maxWidth: "500px" }}>
+          <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px", marginTop: 0 }}>Sẵn sàng chinh phục {categories.find(c => c.id === activeCategory)?.name}?</h2>
+          <p style={{ opacity: 0.8, marginBottom: "24px" }}>Trải nghiệm môi trường thi thật với tính năng tính giờ, tự động chấm điểm và giải thích đáp án bằng AI.</p>
+          <button style={{ 
+            background: "white", color: "#064e3b", padding: "12px 24px", 
+            borderRadius: "8px", fontWeight: "bold", border: "none", cursor: "pointer" 
+          }}>
             Vào phòng thi ngay
           </button>
         </div>
-        <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-gradient-to-l from-emerald-500 to-transparent opacity-50 pointer-events-none" />
       </div>
 
       {/* Grid of exams */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
         {mockExams.map(exam => (
           <motion.div 
             key={exam.id}
             whileHover={{ y: -4, boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)" }}
-            className="bg-white p-5 rounded-xl border border-[rgba(0,0,0,0.05)] flex flex-col justify-between cursor-pointer"
+            style={{ 
+              background: "white", padding: "20px", borderRadius: "12px", 
+              border: "1px solid rgba(0,0,0,0.05)", display: "flex", 
+              flexDirection: "column", justifyContent: "space-between", cursor: "pointer" 
+            }}
           >
             <div>
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-xs font-bold px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "bold", padding: "4px 8px", background: "#d1fae5", color: "#047857", borderRadius: "4px" }}>
                   {exam.type}
                 </span>
-                <span className="text-xs font-medium text-[rgba(0,0,0,0.4)]">
+                <span style={{ fontSize: "12px", fontWeight: "500", color: "var(--text-secondary)" }}>
                   {exam.time} phút
                 </span>
               </div>
-              <h3 className="font-bold text-lg mb-1 leading-tight" style={{ color: "var(--text-primary)" }}>
+              <h3 style={{ fontWeight: "bold", fontSize: "18px", marginBottom: "4px", color: "var(--text-primary)", marginTop: 0 }}>
                 {exam.title}
               </h3>
-              <p className="text-sm text-[rgba(0,0,0,0.5)]">{exam.questions} câu hỏi</p>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>{exam.questions} câu hỏi</p>
             </div>
             
-            <div className="mt-6">
-              <button className="w-full py-2 bg-emerald-50 text-emerald-600 rounded-lg font-medium hover:bg-emerald-100 transition-colors">
+            <div style={{ marginTop: "24px" }}>
+              <button style={{ 
+                width: "100%", padding: "10px", background: "#ecfdf5", 
+                color: "#059669", borderRadius: "8px", fontWeight: "600", 
+                border: "none", cursor: "pointer" 
+              }}>
                 Làm bài
               </button>
             </div>
