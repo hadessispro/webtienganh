@@ -28,7 +28,9 @@ import { CoursesViewV2 } from "./CoursesViewV2";
 import { LessonsViewV2 } from "./LessonsViewV2";
 import { PracticeViewV2 } from "./PracticeViewV2";
 import { ExamHubV2 } from "./ExamHubV2";
-import { ExamRoom } from "./ExamRoom";
+import dynamic from "next/dynamic";
+
+const ExamRoom = dynamic(() => import("./ExamRoom").then(mod => mod.ExamRoom), { ssr: false });
 import { GroupsView } from "./GroupsView";
 import { ShadowingView } from "./ShadowingView";
 import { defaultStudyGroups as defaultStudyGroupsV2 } from "../lib/group-data";
